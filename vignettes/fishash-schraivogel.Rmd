@@ -1,0 +1,106 @@
+---
+title: "Demonstration of fishash on Schraivogel et al 2020 dataset"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{fishash-schraivogel}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+`fishash` is a method for calling guides in perturbseq data from UMI
+counts. For each cell barcode and guide barcode, it tests whether the
+2 barcodes have an odds ratio greater than 1 using a one-sided
+Fisher's exact test. It then performs a multiple testing correction
+using the method of [Guo and Sarkar
+2020](https://doi.org/10.1016/j.jspi.2018.03.008), assuming that tests
+from different cells are independent, but tests within a cell are
+dependant.
+
+```{r setup}
+library(magrittr)
+library(fishash)
+library(ggplot2)
+library(dplyr)
+library(SummarizedExperiment)
+library(Matrix)
+```
+
+We illustrate fishash on the [Schraivogel et al
+2020](https://www.nature.com/articles/s41592-020-0837-5) CRISPRi
+dataset which is also bundled with the [Python crispat
+package](https://github.com/velten-group/crispat).
+
+Loading the data and printing out the first few entries, we can see it
+is a sparse count matrix:
+
+```{r}
+data(crispat_schraivogel)
+crispat_schraivogel[1:10,1:10]
+```
+
+We pass this matrix to the `fishash()` function to call
+presence/absence at 5% FDR:
+
+```{r}
+res_fishash <- fishash(crispat_schraivogel, padj_cutoff = .05)
+res_fishash
+```
+
+The return value is a SummarizedExperiment. The `assigned` assay is a
+sparse boolean matrix indicating whether we call the guide present:
+
+```{r}
+assay(res_fishash, 'assigned')[1:10, 1:10]
+```
+
+The colData shows the classification of each cell; the `demux_type`
+column indicates whether the cell contained 0, 1, or 2+ assigned
+guides, while the `assignment` column is a comma-delimited string
+containing the guides called:
+
+```{r}
+colData(res_fishash)
+```
+
+We can also inspect the log p-values from the Fisher test. Since we
+use a one-sided test, this matrix is also sparse:
+
+```{r}
+assay(res_fishash, 'log_pval')[1:10, 1:10]
+```
+
+Finally, the metadata shows the p-value cutoff selected by the FDR procedure:
+
+```{r}
+metadata(res_fishash)
+```
+
+Below, we plot the nonzero log p-values together with the FDR cutoff,
+coloring by the number of counts in the entry:
+
+```{r, fig.height=8, fig.width=8}
+crispat_schraivogel %>%
+  as('TsparseMatrix') %>%
+  {data.frame(
+    count=.@x,
+    row_idx=.@i+1,
+    col_idx=.@j+1
+  )} %>%
+  mutate(log_pval=assay(res_fishash, 'log_pval')[cbind(row_idx, col_idx)]) %>%
+  mutate(log_pval_trunc=pmax(log_pval, -20)) %>%
+  mutate(count=cut(count, c(0, 1, 2, 3, 5, 10, 30, 50, 100, Inf))) %>%
+  ggplot(aes(x=-log_pval, fill=count)) +
+  geom_histogram(bins=100) +
+  geom_vline(xintercept=-metadata(res_fishash)$log_pval_cutoff, lty='dashed') +
+  scale_x_continuous(trans='log1p', breaks=c(0,1,3,10,30,100,300,1000)) +
+  scale_fill_viridis_d() +
+  theme_classic(base_size=16) +
+  theme(legend.position='bottom')
+```
