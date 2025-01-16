@@ -4,7 +4,13 @@
 \alias{fishash}
 \title{Cell hashing by one-sided Fisher test}
 \usage{
-fishash(counts, padj_cutoff = 0.05, padj_method = c("GS", "BY", "BH"))
+fishash(
+  counts,
+  padj_cutoff = 0.05,
+  padj_method = c("GS", "BY", "BH"),
+  min_count = 2,
+  min_frac = 0
+)
 }
 \arguments{
 \item{counts}{Matrix of counts. Typically, columns are cells and
@@ -15,6 +21,13 @@ rows are features (e.g. gRNAs).}
 \item{padj_method}{FDR correction type. "BH" for Benjamini-Hochberg
 "BY" for Benjamini-Yekutueli, "GS" for Guo & Sarkar 2020 assuming
 independence across cells (and arbitrary dependence within).}
+
+\item{min_count}{Minimum number of counts to call a feature
+present. Note this threshold is applied after the FDR correction.}
+
+\item{min_frac}{Minimum fraction of counts within a cell to call a
+feature present. Note this threshold is applied after FDR
+correction.}
 }
 \value{
 A SummarizedExperiment, containing assays for the

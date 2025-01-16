@@ -6,6 +6,11 @@
 #' @param padj_method FDR correction type. "BH" for Benjamini-Hochberg
 #'   "BY" for Benjamini-Yekutueli, "GS" for Guo & Sarkar 2020 assuming
 #'   independence across cells (and arbitrary dependence within).
+#' @param min_count Minimum number of counts to call a feature
+#'   present. Note this threshold is applied after the FDR correction.
+#' @param min_frac Minimum fraction of counts within a cell to call a
+#'   feature present. Note this threshold is applied after FDR
+#'   correction.
 #'
 #' @returns A SummarizedExperiment, containing assays for the
 #'   assignment matrix ("assigned"), and log-p-value ("log_pval"). The
@@ -17,9 +22,10 @@
 #'
 #' @export
 #' @importFrom SummarizedExperiment SummarizedExperiment
-#' @importFrom Matrix colSums rowSums
+#' @importFrom Matrix colSums rowSums Diagonal
 #' @importFrom sparseMatrixStats colMins
-fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH")) {
+fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
+                    min_count=2, min_frac=0) {
   padj_method <- match.arg(padj_method)
 
   tot <- sum(counts)
@@ -30,6 +36,8 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH")) {
   n_entries <- as.numeric(nrow(counts)) * as.numeric(ncol(counts))
 
   counts <- as(counts, 'CsparseMatrix')
+  fracs <- counts %*% Diagonal(x=1/pmax(colSums(counts), 1))
+
   counts <- as(counts, 'TsparseMatrix')
 
   df <- data.frame(
@@ -83,6 +91,16 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH")) {
   }
 
   mat_assigned <- mat_logpval <= logpval_cutoff
+
+  # only apply threshold when nonzero to avoid dense matrix op
+  if (min_count > 0) {
+    mat_assigned <- mat_assigned & (counts >= min_count)
+  }
+
+  # only apply threshold when nonzero to avoid dense matrix op
+  if (min_frac > 0) {
+    mat_assigned <- mat_assigned & (fracs >= min_frac)
+  }
 
   SummarizedExperiment(
     assays=list(assigned=mat_assigned, log_pval=mat_logpval),
