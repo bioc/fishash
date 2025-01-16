@@ -41,7 +41,7 @@ fishash <- function(counts, fdr_cutoff=.05, fdr_method=c("Holm", "BY", "BH")) {
   )
 
   df$col_sum <- col_sums[df$col_idx]
-  df$row_sum <- col_sums[df$row_idx]
+  df$row_sum <- row_sums[df$row_idx]
 
   df$log_pval <- phyper(
     df$count - 1,
@@ -65,9 +65,10 @@ fishash <- function(counts, fdr_cutoff=.05, fdr_method=c("Holm", "BY", "BH")) {
 
   df$padj_bh_1m <- 1-df$padj_bh
   df$padj_by_1m <- 1-df$padj_by
+  df$padj_holm_1m <- 1-df$padj_holm
 
   # TODO add assigned, odds_ratio
-  assay_names <- c('log_pval', 'padj_by_1m', 'padj_bh_1m')
+  assay_names <- c('log_pval', 'padj_by_1m', 'padj_bh_1m', 'padj_holm_1m')
   names(assay_names) <- assay_names
 
   ret <- lapply(
