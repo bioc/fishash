@@ -21,7 +21,7 @@
 #'
 #' @export
 #' @importFrom SummarizedExperiment SummarizedExperiment
-#' @importFrom Matrix colSums rowSums Diagonal
+#' @importFrom Matrix colSums rowSums Diagonal sparseMatrix
 #' @importFrom sparseMatrixStats colMins
 #' @importFrom dplyr case_when group_by summarize
 fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
