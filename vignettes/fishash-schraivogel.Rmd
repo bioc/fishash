@@ -21,7 +21,7 @@ Fisher's exact test. It then performs a multiple testing correction
 using the method of [Guo and Sarkar
 2020](https://doi.org/10.1016/j.jspi.2018.03.008), assuming that tests
 from different cells are independent, but tests within a cell are
-dependant.
+dependent.
 
 ```{r setup}
 library(magrittr)
