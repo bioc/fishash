@@ -23,11 +23,10 @@ rows are features (e.g. gRNAs).}
 independence across cells (and arbitrary dependence within).}
 
 \item{min_count}{Minimum number of counts to call a feature
-present. Note this threshold is applied after the FDR correction.}
+present.}
 
 \item{min_frac}{Minimum fraction of counts within a cell to call a
-feature present. Note this threshold is applied after FDR
-correction.}
+feature present.}
 }
 \value{
 A SummarizedExperiment, containing assays for the

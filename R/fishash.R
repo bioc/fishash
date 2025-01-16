@@ -7,10 +7,9 @@
 #'   "BY" for Benjamini-Yekutueli, "GS" for Guo & Sarkar 2020 assuming
 #'   independence across cells (and arbitrary dependence within).
 #' @param min_count Minimum number of counts to call a feature
-#'   present. Note this threshold is applied after the FDR correction.
+#'   present.
 #' @param min_frac Minimum fraction of counts within a cell to call a
-#'   feature present. Note this threshold is applied after FDR
-#'   correction.
+#'   feature present.
 #'
 #' @returns A SummarizedExperiment, containing assays for the
 #'   assignment matrix ("assigned"), and log-p-value ("log_pval"). The
@@ -24,6 +23,7 @@
 #' @importFrom SummarizedExperiment SummarizedExperiment
 #' @importFrom Matrix colSums rowSums Diagonal
 #' @importFrom sparseMatrixStats colMins
+#' @importFrom dplyr case_when group_by summarize
 fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
                     min_count=2, min_frac=0) {
   padj_method <- match.arg(padj_method)
@@ -102,8 +102,28 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
     mat_assigned <- mat_assigned & (fracs >= min_frac)
   }
 
+  n_assigned <- colSums(mat_assigned)
+  demux_type <- case_when(
+    n_assigned == 1 ~ 'singlet',
+    n_assigned > 1 ~ 'doublet',
+    TRUE ~ 'unknown'
+  )
+
+  df$assigned <- mat_assigned[cbind(df$row_idx, df$col_idx)]
+
+  assign_group_summ <- summarize(group_by(df[df$assigned,], col_idx),
+                                 assignment=paste(rownames(counts)[row_idx],
+                                                  collapse=','))
+
+  assignment <- rep("", ncol(counts))
+  assignment[assign_group_summ$col_idx] <- assign_group_summ$assignment
+
   SummarizedExperiment(
     assays=list(assigned=mat_assigned, log_pval=mat_logpval),
+    colData=data.frame(
+      demux_type = demux_type,
+      assignment = assignment
+    ),
     metadata=list(log_pval_cutoff=logpval_cutoff)
   )
 }
