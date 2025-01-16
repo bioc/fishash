@@ -19,7 +19,7 @@
 #' @export
 #' @importFrom SummarizedExperiment SummarizedExperiment
 #' @importFrom Matrix colSums rowSums
-fishash <- function(counts, fdr_cutoff=.05, fdr_method=c("BY", "BH")) {
+fishash <- function(counts, fdr_cutoff=.05, fdr_method=c("Holm", "BY", "BH")) {
   fdr_method <- match.arg(fdr_method)
 
   tot <- sum(counts)
@@ -56,6 +56,8 @@ fishash <- function(counts, fdr_cutoff=.05, fdr_method=c("BY", "BH")) {
   df$rank <- 1:nrow(df)
   df$padj_by <- pmin(n_entries * cm * exp(df$log_pval) / df$rank, 1)
   df$padj_bh <- pmin(n_entries * 1 * exp(df$log_pval) / df$rank, 1)
+  df$padj_holm <- exp(df$log_pval) * (n_entries - df$rank + 1)
+  df$padj_holm <- pmin(cummax(df$padj_holm), 1)
 
   df <- df[nrow(df):1,]
   df$padj_by <- cummin(df$padj_by)
@@ -64,7 +66,7 @@ fishash <- function(counts, fdr_cutoff=.05, fdr_method=c("BY", "BH")) {
   df$padj_bh_1m <- 1-df$padj_bh
   df$padj_by_1m <- 1-df$padj_by
 
-  # TODO add odds_ratio
+  # TODO add assigned, odds_ratio
   assay_names <- c('log_pval', 'padj_by_1m', 'padj_bh_1m')
   names(assay_names) <- assay_names
 
@@ -83,8 +85,11 @@ fishash <- function(counts, fdr_cutoff=.05, fdr_method=c("BY", "BH")) {
 
   metadata(ret)$log_pval_cutoff_by <- max(df[df$padj_by <= fdr_cutoff,'log_pval'])
   metadata(ret)$log_pval_cutoff_bh <- max(df[df$padj_bh <= fdr_cutoff,'log_pval'])
+  metadata(ret)$log_pval_cutoff_holm <- max(df[df$padj_holm <= fdr_cutoff,'log_pval'])
 
-  if (fdr_method == 'BH') {
+  if (fdr_method == 'Holm') {
+    metadata(ret)$log_pval_cutoff <- metadata(ret)$log_pval_cutoff_holm
+  } else if (fdr_method == 'BH') {
     metadata(ret)$log_pval_cutoff <- metadata(ret)$log_pval_cutoff_bh
   } else if (fdr_method == 'BY') {
     metadata(ret)$log_pval_cutoff <- metadata(ret)$log_pval_cutoff_by
