@@ -4,27 +4,26 @@
 \alias{fishash}
 \title{Cell hashing by one-sided Fisher test}
 \usage{
-fishash(counts, fdr_cutoff = 0.05, fdr_method = c("BY", "BH"))
+fishash(counts, padj_cutoff = 0.05, padj_method = c("GS", "BY", "BH"))
 }
 \arguments{
 \item{counts}{Matrix of counts. Typically, columns are cells and
 rows are features (e.g. gRNAs).}
 
-\item{fdr_cutoff}{Threshold for false discovery rate}
+\item{padj_cutoff}{Threshold for false discovery rate}
 
-\item{fdr_method}{FDR correction type -- either "BH" for
-Benjamini-Hochberg or "BY" for Benjamini-Yekutueli}
+\item{padj_method}{FDR correction type. "BH" for Benjamini-Hochberg
+"BY" for Benjamini-Yekutueli, "GS" for Guo & Sarkar 2020 assuming
+independence across cells (and arbitrary dependence within).}
 }
 \value{
 A SummarizedExperiment, containing assays for the
-assignment ("assigned"), log-p-value ("log_pval"), 1 minus
-BH-corrected FDR ("padj_bh_1m"), 1 minus BY-corrected FDR
-("padj_by_1m"). The colData has columns for whether the cell is
-singlet, doublet, or unassigned ("demux_type"), and the
-assignment ("assignment"). The metadata contains an entry for the
-p-value cutoff at the given FDR level ("log_pval_cutoff"), as
-well as cutoffs under both BH and BY ("log_pval_cutoff_bh",
-"log_pval_cutoff_by").
+assignment matrix ("assigned"), and log-p-value ("log_pval"). The
+colData has columns for whether the cell is singlet, doublet, or
+unassigned ("demux_type"), and the assignment as a
+comma-delimited string ("assignment"). The metadata contains an
+entry for the p-value cutoff at the given FDR level
+("log_pval_cutoff").
 }
 \description{
 Cell hashing by one-sided Fisher test
