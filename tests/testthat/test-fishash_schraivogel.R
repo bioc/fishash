@@ -25,4 +25,7 @@ test_that("Fishash results on test dataset haven't changed", {
   ## sensitive to order of comma-delimited string
   #expect_identical(colData(expected_result)$assignment,
   #                 colData(new_result)$assignment)
+
+  expect_identical(assay(expected_result, 'assigned'),
+                   assay(new_result, 'assigned'))
 })
