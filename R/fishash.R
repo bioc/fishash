@@ -90,6 +90,8 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
     B <- sum(block_padj <= padj_cutoff)
 
     logpval_cutoff <- log(padj_cutoff) - log(n_entries) + log(B)
+  } else {
+    stop(sprintf("Unrecognized padj_method %s", padj_method))
   }
 
   mat_assigned <- mat_logpval <= logpval_cutoff
