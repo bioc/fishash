@@ -86,7 +86,7 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
     stopifnot(sum(df$log_pval <= logpval_cutoff) == n_signif)
   } else if (padj_method == "GS") {
     colmin_logpval <- colMins(mat_logpval)
-    block_padj <- p.adjust(exp(colmin_logpval) * nrow(counts), method='BH')
+    block_padj <- p.adjust(pmin(exp(colmin_logpval) * nrow(counts), 1), method='BH')
     B <- sum(block_padj <= padj_cutoff)
 
     logpval_cutoff <- log(padj_cutoff) - log(n_entries) + log(B)
