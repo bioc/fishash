@@ -24,6 +24,8 @@
 #' @importFrom Matrix colSums rowSums Diagonal sparseMatrix
 #' @importFrom sparseMatrixStats colMins
 #' @importFrom dplyr case_when group_by summarize
+#' @importFrom methods as
+#' @importFrom stats p.adjust phyper
 fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
                     min_count=2, min_frac=0) {
   padj_method <- match.arg(padj_method)
