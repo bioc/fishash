@@ -11,13 +11,18 @@
 #' @param min_frac Minimum fraction of counts within a cell to call a
 #'   feature present.
 #'
-#' @returns A SummarizedExperiment, containing assays for the
-#'   assignment matrix ("assigned"), and log-p-value ("log_pval"). The
-#'   colData has columns for whether the cell is singlet, doublet, or
-#'   unassigned ("demux_type"), and the assignment as a
-#'   comma-delimited string ("assignment"). The metadata contains an
-#'   entry for the p-value cutoff at the given FDR level
-#'   ("log_pval_cutoff").
+#' @returns A SummarizedExperiment. The colData has columns for
+#'   whether the cell is singlet, doublet, or unassigned
+#'   ("demux_type"), and the assignment as a comma-delimited string
+#'   ("assignment"). The metadata contains an entry for the p-value
+#'   cutoff at the given FDR level ("log_pval_cutoff").  The
+#'   SummarizedExperiment contains assays for the assignment matrix
+#'   ("assigned"), the log-p-value ("log_pval"), the odds-ratio
+#'   ("odds_ratio"), and a regularized version of the odds-ratio that
+#'   avoids dividing by 0 by adding a pseudocount to the off-diagonal
+#'   entries of the 2x2 contingency table
+#'   ("odds_ratio_regularized"). Note the "odds_ratio_regularized"
+#'   assay is EXPERIMENTAL and subject to change.
 #'
 #' @export
 #' @importFrom SummarizedExperiment SummarizedExperiment
@@ -58,6 +63,16 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
     df$col_sum,
     lower.tail=FALSE,
     log.p=TRUE
+  )
+
+  df$odds_ratio <- (
+    df$count * (tot - df$row_sum - df$col_sum + df$count) /
+      (df$row_sum - df$count) / (df$col_sum - df$count)
+  )
+
+  df$odds_ratio_regularized <- (
+    df$count * (tot - df$row_sum - df$col_sum + df$count) /
+      (df$row_sum - df$count + 1) / (df$col_sum - df$count + 1)
   )
 
   mat_logpval <- sparseMatrix(
@@ -123,7 +138,16 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
   assignment[assign_group_summ$col_idx] <- assign_group_summ$assignment
 
   SummarizedExperiment(
-    assays=list(assigned=mat_assigned, log_pval=mat_logpval),
+    assays=list(assigned=mat_assigned, log_pval=mat_logpval,
+                odds_ratio= sparseMatrix(
+                  i=df$row_idx, j=df$col_idx,
+                  x=df$odds_ratio, dims=dim(counts), dimnames=dimnames(counts),
+                  index1=TRUE),
+                odds_ratio_regularized= sparseMatrix(
+                  i=df$row_idx, j=df$col_idx,
+                  x=df$odds_ratio_regularized,
+                  dims=dim(counts), dimnames=dimnames(counts),
+                  index1=TRUE)),
     colData=data.frame(
       demux_type = demux_type,
       assignment = assignment
