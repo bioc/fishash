@@ -1,7 +1,7 @@
 #' Simulate guide count matrix based on a cellbender-like model
 #'
-#' @param n_cells Number of cells
 #' @param n_guides Number of guides
+#' @param n_cells Number of cells
 #' @param moi The pre-selection multiplicity of infection. The
 #'     Poisson-rate in the hurdle Poisson for the number of guides per
 #'     cell.
