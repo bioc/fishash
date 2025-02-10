@@ -29,13 +29,18 @@ present.}
 feature present.}
 }
 \value{
-A SummarizedExperiment, containing assays for the
-assignment matrix ("assigned"), and log-p-value ("log_pval"). The
-colData has columns for whether the cell is singlet, doublet, or
-unassigned ("demux_type"), and the assignment as a
-comma-delimited string ("assignment"). The metadata contains an
-entry for the p-value cutoff at the given FDR level
-("log_pval_cutoff").
+A SummarizedExperiment. The colData has columns for
+whether the cell is singlet, doublet, or unassigned
+("demux_type"), and the assignment as a comma-delimited string
+("assignment"). The metadata contains an entry for the p-value
+cutoff at the given FDR level ("log_pval_cutoff").  The
+SummarizedExperiment contains assays for the assignment matrix
+("assigned"), the log-p-value ("log_pval"), the odds-ratio
+("odds_ratio"), and a regularized version of the odds-ratio that
+avoids dividing by 0 by adding a pseudocount to the off-diagonal
+entries of the 2x2 contingency table
+("odds_ratio_regularized"). Note the "odds_ratio_regularized"
+assay is EXPERIMENTAL and subject to change.
 }
 \description{
 Cell hashing by one-sided Fisher test
