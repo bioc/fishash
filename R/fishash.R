@@ -1,15 +1,24 @@
 #' Cell hashing by one-sided Fisher test
 #'
 #' @param counts Matrix of counts. Typically, columns are cells and
-#'   rows are features (e.g. gRNAs).
+#'     rows are features (e.g. gRNAs).
 #' @param padj_cutoff Threshold for false discovery rate
 #' @param padj_method FDR correction type. "BH" for Benjamini-Hochberg
-#'   "BY" for Benjamini-Yekutueli, "GS" for Guo & Sarkar 2020 assuming
-#'   independence across cells (and arbitrary dependence within).
+#'     "BY" for Benjamini-Yekutueli, "GS" for Guo & Sarkar 2020
+#'     assuming independence across cells (and arbitrary dependence
+#'     within).
 #' @param min_count Minimum number of counts to call a feature
-#'   present.
+#'     present.
 #' @param min_frac Minimum fraction of counts within a cell to call a
-#'   feature present.
+#'     feature present.
+#' @param refit Whether to iteratively refit the model, re-estimating
+#'     the background vs signal counts from the previous iteration. If
+#'     0, no refitting is done; if a positive integer, reruns with
+#'     that many iterations.  The significant entries from the
+#'     previous iteration are subtracted from the counts to get a
+#'     matrix of "background noise" counts, which are then used for
+#'     non-cell entries of the 2x2 table.  This may mitigate effects
+#'     from Simpson's paradox.
 #'
 #' @returns A SummarizedExperiment. The colData has columns for
 #'   whether the cell is singlet, doublet, or unassigned
@@ -32,8 +41,29 @@
 #' @importFrom methods as
 #' @importFrom stats p.adjust phyper
 fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
-                    min_count=2, min_frac=0) {
-  padj_method <- match.arg(padj_method)
+                    min_count=2, min_frac=0, refit=0) {
+    padj_method <- match.arg(padj_method)
+
+    background <- NULL
+
+    for (i in 1:(refit+1)) {
+        res <- fishash_internal(
+            counts=counts,
+            padj_cutoff=padj_cutoff,
+            padj_method=padj_method,
+            min_count=min_count,
+            min_frac=min_frac,
+            background=background
+        )
+
+        background <- counts - assay(res, 'assigned') * counts
+    }
+
+    res
+}
+
+fishash_internal <- function(counts, padj_cutoff, padj_method,
+                             min_count, min_frac, background) {
 
   tot <- sum(counts)
 
@@ -53,25 +83,38 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
     col_idx=counts@j+1
   )
 
+  if (is.null(background)) {
+    background <- counts
+  }
+
+  col_sums_bg <- colSums(background)
+  row_sums_bg <- rowSums(background)
+  tot_bg <- sum(background)
+
   df$col_sum <- col_sums[df$col_idx]
-  df$row_sum <- row_sums[df$row_idx]
+
+  #df$row_sum <- row_sums[df$row_idx]
+  df$row_sum <- (row_sums_bg[df$row_idx] -
+                   background[cbind(df$row_idx, df$col_idx)] +
+                   df$count)
+  df$tot <- tot_bg - col_sums_bg[df$col_idx] + col_sums[df$col_idx]
 
   df$log_pval <- phyper(
     df$count - 1,
     df$row_sum,
-    tot-df$row_sum,
+    df$tot-df$row_sum,
     df$col_sum,
     lower.tail=FALSE,
     log.p=TRUE
   )
 
   df$odds_ratio <- (
-    df$count * (tot - df$row_sum - df$col_sum + df$count) /
+    df$count * (df$tot - df$row_sum - df$col_sum + df$count) /
       (df$row_sum - df$count) / (df$col_sum - df$count)
   )
 
   df$odds_ratio_regularized <- (
-    df$count * (tot - df$row_sum - df$col_sum + df$count) /
+    df$count * (df$tot - df$row_sum - df$col_sum + df$count) /
       (df$row_sum - df$count + 1) / (df$col_sum - df$count + 1)
   )
 
