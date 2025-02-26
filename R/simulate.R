@@ -34,15 +34,24 @@
 #'     counts
 #' @param Phi_noise The negative binomial overdispersion of the noise
 #'     counts
+#' @param return_sparse_only Whether to return only the sparse matrices of
+#'     counts and assignments, or whether to also return the dense
+#'     matrices of Poisson rates and latent odds-ratios.
 #'
 #' @returns A SummarizedExperiment, with the following assays:
-#'     `"ground_truth"` a logical matrix indicating which cells were
-#'     infected with which guides; `"counts"` the observed guide
-#'     counts; `"counts_signal"` the counts coming from the true
-#'     signal (i.e. with noise counts subtracted); `"lambd_signal"`
-#'     the Poisson rate of the signal counts; `"lambd_noise"` the
-#'     Poisson rate of the noise counts; `"latent_odds_ratio"` the
-#'     true odds ratio of each cell-guide pair.
+#' \describe{
+#'   \item{ground_truth}{A logical matrix indicating which cells were infected
+#'                       with which guides}
+#'   \item{counts}{The observed guide counts}
+#'   \item{counts_signal}{The counts coming from the true signal (i.e.
+#'                        with noise counts subtracted).}
+#' }
+#' When `return_sparse_only` is `FALSE`, the following assays are also added:
+#' \describe{
+#'  \item{lambd_signal}{The Poisson rate of the signal counts}
+#'  \item{lambd_noise}{The Poisson rate of the noise counts}
+#'  \item{latent_odds_ratio}{The true odds ratio of each cell-guide pair.}
+#' }
 #' 
 #' @export
 #' @importFrom extraDistr rtpois rdirichlet
@@ -76,7 +85,10 @@ simulate_guidebender <- function(
     # Overdispersion of the signal counts
     Phi_cell=1,
     # Overdispersion of the noise counts
-    Phi_noise=0
+    Phi_noise=0,
+    # Whether to return only the sparse counts, or the dense latent
+    # odds-ratios as well
+    return_sparse_only=FALSE
 ) {
     # sample number of guides per cell
     infections_per_cell <- rtpois(n_cells, moi, a=0)
@@ -176,16 +188,26 @@ simulate_guidebender <- function(
     or_latent_mat <- lambd_ng_tot / quo1 / quo2 * (
         sum(lambd_ng_tot) - quo1 - quo2 + lambd_ng_tot)
 
-    res <- SummarizedExperiment(
-        assays=list(
-            ground_truth = mat_truth,
-            counts = counts_cell + counts_noise,
-            counts_signal = counts_cell,
-            lambd_signal = lambd_ng_cell,
-            lambd_noise = lambd_ng_noise,
-            latent_odds_ratio = or_latent_mat
+    if (return_sparse_only) {
+        res <- SummarizedExperiment(
+            assays=list(
+                ground_truth = as(mat_truth, 'CsparseMatrix'),
+                counts = as(counts_cell + counts_noise, 'CsparseMatrix'),
+                counts_signal = as(counts_cell, 'CsparseMatrix')
+            )
         )
-    )
+    } else {
+        res <- SummarizedExperiment(
+            assays=list(
+                ground_truth = mat_truth,
+                counts = counts_cell + counts_noise,
+                counts_signal = counts_cell,
+                lambd_signal = lambd_ng_cell,
+                lambd_noise = lambd_ng_noise,
+                latent_odds_ratio = or_latent_mat
+            )
+        )
+    }
 
     colnames(res) <- paste0("cell_", 1:ncol(res))
     rownames(res) <- paste0("feature_", 1:nrow(res))

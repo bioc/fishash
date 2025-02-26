@@ -9,7 +9,8 @@ fishash(
   padj_cutoff = 0.05,
   padj_method = c("GS", "BY", "BH"),
   min_count = 2,
-  min_frac = 0
+  min_frac = 0,
+  refit = 0
 )
 }
 \arguments{
@@ -19,14 +20,24 @@ rows are features (e.g. gRNAs).}
 \item{padj_cutoff}{Threshold for false discovery rate}
 
 \item{padj_method}{FDR correction type. "BH" for Benjamini-Hochberg
-"BY" for Benjamini-Yekutueli, "GS" for Guo & Sarkar 2020 assuming
-independence across cells (and arbitrary dependence within).}
+"BY" for Benjamini-Yekutueli, "GS" for Guo & Sarkar 2020
+assuming independence across cells (and arbitrary dependence
+within).}
 
 \item{min_count}{Minimum number of counts to call a feature
 present.}
 
 \item{min_frac}{Minimum fraction of counts within a cell to call a
 feature present.}
+
+\item{refit}{Whether to iteratively refit the model, re-estimating
+the background vs signal counts from the previous iteration. If
+0, no refitting is done; if a positive integer, reruns with
+that many iterations.  The significant entries from the
+previous iteration are subtracted from the counts to get a
+matrix of "background noise" counts, which are then used for
+non-cell entries of the 2x2 table.  This may mitigate effects
+from Simpson's paradox.}
 }
 \value{
 A SummarizedExperiment. The colData has columns for

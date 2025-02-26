@@ -34,7 +34,7 @@
 #'   assay is EXPERIMENTAL and subject to change.
 #'
 #' @export
-#' @importFrom SummarizedExperiment SummarizedExperiment
+#' @importFrom SummarizedExperiment SummarizedExperiment assay
 #' @importFrom Matrix colSums rowSums Diagonal sparseMatrix
 #' @importFrom sparseMatrixStats colMins
 #' @importFrom dplyr case_when group_by summarize

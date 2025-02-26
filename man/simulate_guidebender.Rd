@@ -20,7 +20,8 @@ simulate_guidebender(
   rho_beta = 50,
   eps_alpha = 50,
   Phi_cell = 1,
-  Phi_noise = 0
+  Phi_noise = 0,
+  return_sparse_only = FALSE
 )
 }
 \arguments{
@@ -73,16 +74,26 @@ counts}
 
 \item{Phi_noise}{The negative binomial overdispersion of the noise
 counts}
+
+\item{return_sparse_only}{Whether to return only the sparse matrices of
+counts and assignments, or whether to also return the dense
+matrices of Poisson rates and latent odds-ratios.}
 }
 \value{
 A SummarizedExperiment, with the following assays:
-\code{"ground_truth"} a logical matrix indicating which cells were
-infected with which guides; \code{"counts"} the observed guide
-counts; \code{"counts_signal"} the counts coming from the true
-signal (i.e. with noise counts subtracted); \code{"lambd_signal"}
-the Poisson rate of the signal counts; \code{"lambd_noise"} the
-Poisson rate of the noise counts; \code{"latent_odds_ratio"} the
-true odds ratio of each cell-guide pair.
+\describe{
+\item{ground_truth}{A logical matrix indicating which cells were infected
+with which guides}
+\item{counts}{The observed guide counts}
+\item{counts_signal}{The counts coming from the true signal (i.e.
+with noise counts subtracted).}
+}
+When \code{return_sparse_only} is \code{FALSE}, the following assays are also added:
+\describe{
+\item{lambd_signal}{The Poisson rate of the signal counts}
+\item{lambd_noise}{The Poisson rate of the noise counts}
+\item{latent_odds_ratio}{The true odds ratio of each cell-guide pair.}
+}
 }
 \description{
 Simulate guide count matrix based on a cellbender-like model
