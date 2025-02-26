@@ -176,7 +176,7 @@ simulate_guidebender <- function(
     or_latent_mat <- lambd_ng_tot / quo1 / quo2 * (
         sum(lambd_ng_tot) - quo1 - quo2 + lambd_ng_tot)
 
-    return(SummarizedExperiment(
+    res <- SummarizedExperiment(
         assays=list(
             ground_truth = mat_truth,
             counts = counts_cell + counts_noise,
@@ -185,5 +185,10 @@ simulate_guidebender <- function(
             lambd_noise = lambd_ng_noise,
             latent_odds_ratio = or_latent_mat
         )
-    ))
+    )
+
+    colnames(res) <- paste0("cell_", 1:ncol(res))
+    rownames(res) <- paste0("feature_", 1:nrow(res))
+
+    return(res)
 }
