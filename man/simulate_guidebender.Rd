@@ -21,7 +21,8 @@ simulate_guidebender(
   eps_alpha = 50,
   Phi_cell = 1,
   Phi_noise = 0,
-  return_sparse_only = FALSE
+  return_sparse_only = FALSE,
+  median_per_cell = NULL
 )
 }
 \arguments{
@@ -49,16 +50,16 @@ shape parameter is proportional to \code{d_g^{guide} * p_g}, and
 sums to \code{endo_shape_sum * n_guides}.}
 
 \item{d_mu_drop}{The droplet ambient size factor \code{d_n^{drop}} is
-lognormal with mean \code{d_mu_drop}.}
+lognormal with location \code{d_mu_drop}.}
 
 \item{d_sigma_drop}{The droplet ambient size factor \code{d_n^{drop}} is
-lognormal with SD \code{d_sigma_drop}.}
+lognormal with scale \code{d_sigma_drop}.}
 
 \item{d_mu_cell}{The cell size factor \code{d_n^{cell}} is lognormal
-with mean \code{d_mu_cell}.}
+with location \code{d_mu_cell}.}
 
 \item{d_sigma_cell}{The cell size factor \code{d_n^{cell}} is lognormal
-with SD \code{d_sigma_cell}.}
+with scale \code{d_sigma_cell}.}
 
 \item{rho_alpha}{Exogeneous noise frequency (i.e. from PCR
 chimeras) is \code{Beta(rho_alpha, rho_beta)}.}
@@ -78,6 +79,9 @@ counts}
 \item{return_sparse_only}{Whether to return only the sparse matrices of
 counts and assignments, or whether to also return the dense
 matrices of Poisson rates and latent odds-ratios.}
+
+\item{median_per_cell}{If non-null, the total number of counts is rescaled
+so that this is the median per cell.}
 }
 \value{
 A SummarizedExperiment, with the following assays:

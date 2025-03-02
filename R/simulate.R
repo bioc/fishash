@@ -17,13 +17,13 @@
 #'     shape parameter is proportional to `d_g^{guide} * p_g`, and
 #'     sums to `endo_shape_sum * n_guides`.
 #' @param d_mu_drop The droplet ambient size factor `d_n^{drop}` is
-#'     lognormal with mean `d_mu_drop`.
+#'     lognormal with location `d_mu_drop`.
 #' @param d_sigma_drop The droplet ambient size factor `d_n^{drop}` is
-#'     lognormal with SD `d_sigma_drop`.
+#'     lognormal with scale `d_sigma_drop`.
 #' @param d_mu_cell The cell size factor `d_n^{cell}` is lognormal
-#'     with mean `d_mu_cell`.
+#'     with location `d_mu_cell`.
 #' @param d_sigma_cell The cell size factor `d_n^{cell}` is lognormal
-#'     with SD `d_sigma_cell`.
+#'     with scale `d_sigma_cell`.
 #' @param rho_alpha Exogeneous noise frequency (i.e. from PCR
 #'     chimeras) is `Beta(rho_alpha, rho_beta)`.
 #' @param rho_beta Exogeneous noise frequency (i.e. from PCR chimeras)
@@ -37,6 +37,8 @@
 #' @param return_sparse_only Whether to return only the sparse matrices of
 #'     counts and assignments, or whether to also return the dense
 #'     matrices of Poisson rates and latent odds-ratios.
+#' @param median_per_cell If non-null, the total number of counts is rescaled
+#'     so that this is the median per cell.
 #'
 #' @returns A SummarizedExperiment, with the following assays:
 #' \describe{
@@ -55,7 +57,7 @@
 #' 
 #' @export
 #' @importFrom extraDistr rtpois rdirichlet
-#' @importFrom stats rbeta rbinom rgamma rmultinom rnorm rpois
+#' @importFrom stats rbeta rbinom rgamma rmultinom rnorm rpois median
 #' @importFrom SummarizedExperiment SummarizedExperiment
 simulate_guidebender <- function(
     # Rows and columns of the count matrix
@@ -88,7 +90,9 @@ simulate_guidebender <- function(
     Phi_noise=0,
     # Whether to return only the sparse counts, or the dense latent
     # odds-ratios as well
-    return_sparse_only=FALSE
+    return_sparse_only=FALSE,
+    # rescale the total counts so this is the median per cell
+    median_per_cell=NULL
 ) {
     # sample number of guides per cell
     infections_per_cell <- rtpois(n_cells, moi, a=0)
@@ -172,6 +176,13 @@ simulate_guidebender <- function(
         ), nrow=nrow(lambd_ng_noise))
     }
 
+    if (!is.null(median_per_cell)) {
+        orig_med <- median(colSums(lambd_ng_cell) + colSums(lambd_ng_noise))
+        rescale_factor <- median_per_cell / orig_med
+        lambd_ng_cell <- rescale_factor * lambd_ng_cell
+        lambd_ng_noise <- rescale_factor * lambd_ng_noise
+    }
+
     counts_cell <- matrix(rpois(
         length(lambd_ng_cell), as.vector(lambd_ng_cell)
     ), nrow=nrow(lambd_ng_cell))
@@ -213,4 +224,114 @@ simulate_guidebender <- function(
     rownames(res) <- paste0("feature_", 1:nrow(res))
 
     return(res)
+}
+
+#' Alternative interface to `simulate_guidebender` that tries to have
+#' more interpretable input parameters, in particular: Signal to Noise
+#' Ratio, count per cell, and fraction of noise that is endogeneous vs
+#' exogeneous. These replace the following parameters from
+#' `simulate_guidebender` which should not be used with this function:
+#' `d_mu_drop`, `d_mu_cell`, `rho_alpha`, `rho_beta`.
+#'
+#' @param n_guides Number of guides
+#' @param n_cells Number of cells
+#' @param moi The pre-selection multiplicity of infection. The
+#'     Poisson-rate in the hurdle Poisson for the number of guides per
+#'     cell.
+#' @param hurdle_prob The probability a cell has zero guides; the
+#'     hurdle in the hurdle-Poisson for the number of guides per cell.
+#' @param snr Ratio of counts from signal to counts from noise
+#' @param count_per_cell Median or mean counts per cell. `use_median`
+#'     determines whether this specifies the median or mean.
+#' @param frac_noise_endo Fraction of the noise that is endogeneous
+#'     (ie background extracellular debris) as opposed to exogeneous
+#'     (ie PCR chimeras).
+#' @param rho_sum Sum of `rho_alpha` and `rho_beta` from
+#'     `simulate_guidebender`. Smaller values imply greater
+#'     variability between cells for the fraction of their counts
+#'     coming from exogenous noise (PCR chimeras).
+#' @param d_sigma_guide The guide expression size factor
+#'     (`d_g^{guide}`) is lognormal with mean 0 and SD `d_sigma_guide`
+#' @param d_sigma_drop The droplet ambient size factor `d_n^{drop}` is
+#'     lognormal with scale `d_sigma_drop`.
+#' @param d_sigma_cell The cell size factor `d_n^{cell}` is lognormal
+#'     with scale `d_sigma_cell`.
+#' @param use_median Whether `counts_per_cell` refers to the median
+#'     (TRUE) or mean (FALSE).
+#' @param ... Additional arguments to pass to
+#'     `simulate_guidebender`. Note the following arguments must NOT
+#'     be specified: `d_mu_drop`, `d_mu_cell`, `rho_alpha`, `rho_beta`.
+#' 
+#' @export
+simulate_guidebender2 <- function(
+    # Rows and columns of the count matrix
+    n_guides, n_cells,
+    # Hurdle-Poisson parameters for number of infections per cell
+    moi, hurdle_prob,
+    # ratio of signal to noise counts
+    snr,
+    # UMIs per cell
+    count_per_cell,
+    # fraction of endo vs exo noise
+    frac_noise_endo,
+    # sum of rho_alpha and rho_beta
+    rho_sum=10,
+    # lognormal SDs
+    d_sigma_drop=.5, d_sigma_cell=.5, d_sigma_guide=.5,
+    # whether counts_per_cell is the mean or the median
+    use_median = TRUE,
+    # other arguments passed to simulate_guidebender
+    ...
+) {
+    avg_infections <- moi / (1-exp(-moi)) * (1 - hurdle_prob)
+
+    frac_signal <- snr / (1 + snr)
+    frac_endo <- frac_noise_endo * (1 - frac_signal)
+    frac_exo <- 1 - frac_signal - frac_endo
+
+    rho_alpha <- frac_exo * rho_sum
+    rho_beta <- rho_sum - rho_alpha
+
+    # expectation of lognormal is exp(mu + sigma^2 / 2)
+    # frac_signal / frac_endo = avg_infections * exp(mu_c + sigma_c^2/2 + sigma_g^2/2) / exp(mu_d + sigma_d^2 / 2)
+    d_mu_cell_drop_diff <- (
+        log(frac_signal / frac_endo / avg_infections)
+        - .5 * d_sigma_cell^2
+        - .5 * d_sigma_guide^2
+        + .5 * d_sigma_drop^2
+    )
+
+    # n = avg_infections * exp(mu_c+sigma_c^2/2+sigma_g^2/) + exp(mu_d+sigma_d^2/2)
+    # n / exp(mu_d) = avg_infections * exp(diff)*exp(sigma_c^2/2+sigma_g^2/2) + exp(sigma_d^2/2)
+    # exp(mu_d) = n / (avg_infections * exp(diff)*exp(sigma_c^2/2+sigma_g^2/2) + exp(sigma_d^2/2))
+    d_mu_drop <- (
+        log(count_per_cell) - log(
+            avg_infections * exp(d_mu_cell_drop_diff + d_sigma_cell^2 / 2 + d_sigma_guide^2 / 2) +
+                exp(d_sigma_drop^2)
+        )
+    )
+
+    d_mu_cell <- d_mu_drop + d_mu_cell_drop_diff
+
+    if (use_median) {
+        median_per_cell <- count_per_cell
+    } else {
+        median_per_cell <- NULL
+    }
+
+    simulate_guidebender(
+        n_guides = n_guides,
+        n_cells = n_cells,
+        moi = moi,
+        hurdle_prob = hurdle_prob,
+        d_sigma_guide = d_sigma_guide,
+        d_mu_drop = d_mu_drop,
+        d_sigma_drop = d_sigma_drop,
+        d_mu_cell = d_mu_cell,
+        d_sigma_cell = d_sigma_cell,
+        rho_alpha = rho_alpha,
+        rho_beta = rho_beta,
+        median_per_cell = median_per_cell,
+        ...
+    )
 }
