@@ -49,6 +49,7 @@ fishash <- function(counts, padj_cutoff=.05,
     padj_method <- match.arg(padj_method)
 
     background <- NULL
+    prev <- NULL
 
     for (i in 1:(refit+1)) {
         res <- fishash_internal(
@@ -62,7 +63,15 @@ fishash <- function(counts, padj_cutoff=.05,
         )
 
         background <- counts - assay(res, 'assigned') * counts
+
+        if (!is.null(prev) &&
+                sum(abs(prev - assay(res, 'assigned'))) == 0) {
+            break
+        }
+
+        prev <- assay(res, 'assigned')
     }
+    metadata(res)$num_iter <- i
 
     res
 }
