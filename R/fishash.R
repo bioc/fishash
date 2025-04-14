@@ -19,6 +19,8 @@
 #'     matrix of "background noise" counts, which are then used for
 #'     non-cell entries of the 2x2 table.  This may mitigate effects
 #'     from Simpson's paradox.
+#' @param exclude_empty If TRUE, rows and columns that have 0 counts
+#'     are ignored for multiple testing correction.
 #'
 #' @returns A SummarizedExperiment. The colData has columns for
 #'   whether the cell is singlet, doublet, or unassigned
@@ -40,8 +42,10 @@
 #' @importFrom dplyr case_when group_by summarize
 #' @importFrom methods as
 #' @importFrom stats p.adjust phyper
-fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
-                    min_count=2, min_frac=0, refit=0) {
+fishash <- function(counts, padj_cutoff=.05,
+                    padj_method=c("GS", "BY", "BH"),
+                    min_count=2, min_frac=0, refit=0,
+                    exclude_empty=FALSE) {
     padj_method <- match.arg(padj_method)
 
     background <- NULL
@@ -53,7 +57,8 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
             padj_method=padj_method,
             min_count=min_count,
             min_frac=min_frac,
-            background=background
+            background=background,
+            exclude_empty=exclude_empty
         )
 
         background <- counts - assay(res, 'assigned') * counts
@@ -63,14 +68,22 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
 }
 
 fishash_internal <- function(counts, padj_cutoff, padj_method,
-                             min_count, min_frac, background) {
+                             min_count, min_frac, background,
+                             exclude_empty) {
 
     tot <- sum(counts)
 
     col_sums <- colSums(counts)
     row_sums <- rowSums(counts)
 
-    n_entries <- as.numeric(nrow(counts)) * as.numeric(ncol(counts))
+    if (exclude_empty) {
+        n_rows <- sum(row_sums > 0)
+        n_cols <- sum(col_sums > 0)
+    } else {
+        n_rows <- nrow(counts)
+        n_cols <- ncol(counts)
+    }
+    n_entries <- as.numeric(n_rows) * as.numeric(n_cols)
 
     counts <- as(counts, 'CsparseMatrix')
     fracs <- counts %*% Diagonal(x=1/pmax(colSums(counts), 1))
@@ -140,11 +153,18 @@ fishash_internal <- function(counts, padj_cutoff, padj_method,
         df$padj <- cummin(df$padj)
 
         n_signif <- sum(df$padj <= padj_cutoff)
-        logpval_cutoff <- log(padj_cutoff) - log(cm) - log(n_entries) + log(n_signif)
+
+        logpval_cutoff <- (
+            log(padj_cutoff) - log(cm) - log(n_entries) + log(n_signif)
+        )
+
         stopifnot(sum(df$log_pval <= logpval_cutoff) == n_signif)
     } else if (padj_method == "GS") {
         colmin_logpval <- colMins(mat_logpval)
-        block_padj <- p.adjust(pmin(exp(colmin_logpval) * nrow(counts), 1), method='BH')
+
+        block_padj <- p.adjust(pmin(exp(colmin_logpval) * n_rows, 1),
+                               method='BH')
+
         B <- sum(block_padj <= padj_cutoff)
 
         logpval_cutoff <- log(padj_cutoff) - log(n_entries) + log(B)
@@ -173,9 +193,11 @@ fishash_internal <- function(counts, padj_cutoff, padj_method,
 
     df$assigned <- mat_assigned[cbind(df$row_idx, df$col_idx)]
 
-    assign_group_summ <- summarize(group_by(df[df$assigned,], col_idx),
-                                   assignment=paste(rownames(counts)[row_idx],
-                                                    collapse=','))
+    assign_group_summ <- summarize(
+        group_by(df[df$assigned,], col_idx),
+        assignment=paste(rownames(counts)[row_idx],
+                         collapse=',')
+    )
 
     assignment <- rep("", ncol(counts))
     assignment[assign_group_summ$col_idx] <- assign_group_summ$assignment
@@ -184,7 +206,8 @@ fishash_internal <- function(counts, padj_cutoff, padj_method,
         assays=list(assigned=mat_assigned, log_pval=mat_logpval,
                     odds_ratio= sparseMatrix(
                         i=df$row_idx, j=df$col_idx,
-                        x=df$odds_ratio, dims=dim(counts), dimnames=dimnames(counts),
+                        x=df$odds_ratio, dims=dim(counts),
+                        dimnames=dimnames(counts),
                         index1=TRUE),
                     odds_ratio_regularized= sparseMatrix(
                         i=df$row_idx, j=df$col_idx,

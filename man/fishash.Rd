@@ -10,7 +10,8 @@ fishash(
   padj_method = c("GS", "BY", "BH"),
   min_count = 2,
   min_frac = 0,
-  refit = 0
+  refit = 0,
+  exclude_empty = FALSE
 )
 }
 \arguments{
@@ -38,6 +39,9 @@ previous iteration are subtracted from the counts to get a
 matrix of "background noise" counts, which are then used for
 non-cell entries of the 2x2 table.  This may mitigate effects
 from Simpson's paradox.}
+
+\item{exclude_empty}{If TRUE, rows and columns that have 0 counts
+are ignored for multiple testing correction.}
 }
 \value{
 A SummarizedExperiment. The colData has columns for
