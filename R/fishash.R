@@ -65,136 +65,136 @@ fishash <- function(counts, padj_cutoff=.05, padj_method=c("GS", "BY", "BH"),
 fishash_internal <- function(counts, padj_cutoff, padj_method,
                              min_count, min_frac, background) {
 
-  tot <- sum(counts)
+    tot <- sum(counts)
 
-  col_sums <- colSums(counts)
-  row_sums <- rowSums(counts)
+    col_sums <- colSums(counts)
+    row_sums <- rowSums(counts)
 
-  n_entries <- as.numeric(nrow(counts)) * as.numeric(ncol(counts))
+    n_entries <- as.numeric(nrow(counts)) * as.numeric(ncol(counts))
 
-  counts <- as(counts, 'CsparseMatrix')
-  fracs <- counts %*% Diagonal(x=1/pmax(colSums(counts), 1))
+    counts <- as(counts, 'CsparseMatrix')
+    fracs <- counts %*% Diagonal(x=1/pmax(colSums(counts), 1))
 
-  counts <- as(counts, 'TsparseMatrix')
+    counts <- as(counts, 'TsparseMatrix')
 
-  df <- data.frame(
-    count=counts@x,
-    row_idx=counts@i+1,
-    col_idx=counts@j+1
-  )
+    df <- data.frame(
+        count=counts@x,
+        row_idx=counts@i+1,
+        col_idx=counts@j+1
+    )
 
-  if (is.null(background)) {
-    background <- counts
-  }
+    if (is.null(background)) {
+        background <- counts
+    }
 
-  col_sums_bg <- colSums(background)
-  row_sums_bg <- rowSums(background)
-  tot_bg <- sum(background)
+    col_sums_bg <- colSums(background)
+    row_sums_bg <- rowSums(background)
+    tot_bg <- sum(background)
 
-  df$col_sum <- col_sums[df$col_idx]
+    df$col_sum <- col_sums[df$col_idx]
 
-  #df$row_sum <- row_sums[df$row_idx]
-  df$row_sum <- (row_sums_bg[df$row_idx] -
-                   background[cbind(df$row_idx, df$col_idx)] +
-                   df$count)
-  df$tot <- tot_bg - col_sums_bg[df$col_idx] + col_sums[df$col_idx]
+    #df$row_sum <- row_sums[df$row_idx]
+    df$row_sum <- (row_sums_bg[df$row_idx] -
+                       background[cbind(df$row_idx, df$col_idx)] +
+                       df$count)
+    df$tot <- tot_bg - col_sums_bg[df$col_idx] + col_sums[df$col_idx]
 
-  df$log_pval <- phyper(
-    df$count - 1,
-    df$row_sum,
-    df$tot-df$row_sum,
-    df$col_sum,
-    lower.tail=FALSE,
-    log.p=TRUE
-  )
+    df$log_pval <- phyper(
+        df$count - 1,
+        df$row_sum,
+        df$tot-df$row_sum,
+        df$col_sum,
+        lower.tail=FALSE,
+        log.p=TRUE
+    )
 
-  df$odds_ratio <- (
-    df$count * (df$tot - df$row_sum - df$col_sum + df$count) /
-      (df$row_sum - df$count) / (df$col_sum - df$count)
-  )
+    df$odds_ratio <- (
+        df$count * (df$tot - df$row_sum - df$col_sum + df$count) /
+            (df$row_sum - df$count) / (df$col_sum - df$count)
+    )
 
-  df$odds_ratio_regularized <- (
-    df$count * (df$tot - df$row_sum - df$col_sum + df$count) /
-      (df$row_sum - df$count + 1) / (df$col_sum - df$count + 1)
-  )
+    df$odds_ratio_regularized <- (
+        df$count * (df$tot - df$row_sum - df$col_sum + df$count) /
+            (df$row_sum - df$count + 1) / (df$col_sum - df$count + 1)
+    )
 
-  mat_logpval <- sparseMatrix(
-    i=df$row_idx, j=df$col_idx,
-    x=df$log_pval, dims=dim(counts), dimnames=dimnames(counts),
-    index1=TRUE
-  )
+    mat_logpval <- sparseMatrix(
+        i=df$row_idx, j=df$col_idx,
+        x=df$log_pval, dims=dim(counts), dimnames=dimnames(counts),
+        index1=TRUE
+    )
 
-  if (padj_method == "BY") {
-    cm <- log(n_entries) + 1/(2*n_entries) + .57721
-  } else {
-    cm <- 1
-  }
+    if (padj_method == "BY") {
+        cm <- log(n_entries) + 1/(2*n_entries) + .57721
+    } else {
+        cm <- 1
+    }
 
-  if (padj_method %in% c("BH", "BY")) {
-    df <- df[order(df$log_pval),]
-    df$rank <- 1:nrow(df)
+    if (padj_method %in% c("BH", "BY")) {
+        df <- df[order(df$log_pval),]
+        df$rank <- 1:nrow(df)
 
-    df$padj <- pmin(n_entries * cm * exp(df$log_pval) / df$rank, 1)
+        df$padj <- pmin(n_entries * cm * exp(df$log_pval) / df$rank, 1)
 
-    df <- df[nrow(df):1,]
-    df$padj <- cummin(df$padj)
+        df <- df[nrow(df):1,]
+        df$padj <- cummin(df$padj)
 
-    n_signif <- sum(df$padj <= padj_cutoff)
-    logpval_cutoff <- log(padj_cutoff) - log(cm) - log(n_entries) + log(n_signif)
-    stopifnot(sum(df$log_pval <= logpval_cutoff) == n_signif)
-  } else if (padj_method == "GS") {
-    colmin_logpval <- colMins(mat_logpval)
-    block_padj <- p.adjust(pmin(exp(colmin_logpval) * nrow(counts), 1), method='BH')
-    B <- sum(block_padj <= padj_cutoff)
+        n_signif <- sum(df$padj <= padj_cutoff)
+        logpval_cutoff <- log(padj_cutoff) - log(cm) - log(n_entries) + log(n_signif)
+        stopifnot(sum(df$log_pval <= logpval_cutoff) == n_signif)
+    } else if (padj_method == "GS") {
+        colmin_logpval <- colMins(mat_logpval)
+        block_padj <- p.adjust(pmin(exp(colmin_logpval) * nrow(counts), 1), method='BH')
+        B <- sum(block_padj <= padj_cutoff)
 
-    logpval_cutoff <- log(padj_cutoff) - log(n_entries) + log(B)
-  } else {
-    stop(sprintf("Unrecognized padj_method %s", padj_method))
-  }
+        logpval_cutoff <- log(padj_cutoff) - log(n_entries) + log(B)
+    } else {
+        stop(sprintf("Unrecognized padj_method %s", padj_method))
+    }
 
-  mat_assigned <- mat_logpval <= logpval_cutoff
+    mat_assigned <- mat_logpval <= logpval_cutoff
 
-  # only apply threshold when nonzero to avoid dense matrix op
-  if (min_count > 0) {
-    mat_assigned <- mat_assigned & (counts >= min_count)
-  }
+    # only apply threshold when nonzero to avoid dense matrix op
+    if (min_count > 0) {
+        mat_assigned <- mat_assigned & (counts >= min_count)
+    }
 
-  # only apply threshold when nonzero to avoid dense matrix op
-  if (min_frac > 0) {
-    mat_assigned <- mat_assigned & (fracs >= min_frac)
-  }
+    # only apply threshold when nonzero to avoid dense matrix op
+    if (min_frac > 0) {
+        mat_assigned <- mat_assigned & (fracs >= min_frac)
+    }
 
-  n_assigned <- colSums(mat_assigned)
-  demux_type <- case_when(
-    n_assigned == 1 ~ 'singlet',
-    n_assigned > 1 ~ 'doublet',
-    TRUE ~ 'unknown'
-  )
+    n_assigned <- colSums(mat_assigned)
+    demux_type <- case_when(
+        n_assigned == 1 ~ 'singlet',
+        n_assigned > 1 ~ 'doublet',
+        TRUE ~ 'unknown'
+    )
 
-  df$assigned <- mat_assigned[cbind(df$row_idx, df$col_idx)]
+    df$assigned <- mat_assigned[cbind(df$row_idx, df$col_idx)]
 
-  assign_group_summ <- summarize(group_by(df[df$assigned,], col_idx),
-                                 assignment=paste(rownames(counts)[row_idx],
-                                                  collapse=','))
+    assign_group_summ <- summarize(group_by(df[df$assigned,], col_idx),
+                                   assignment=paste(rownames(counts)[row_idx],
+                                                    collapse=','))
 
-  assignment <- rep("", ncol(counts))
-  assignment[assign_group_summ$col_idx] <- assign_group_summ$assignment
+    assignment <- rep("", ncol(counts))
+    assignment[assign_group_summ$col_idx] <- assign_group_summ$assignment
 
-  SummarizedExperiment(
-    assays=list(assigned=mat_assigned, log_pval=mat_logpval,
-                odds_ratio= sparseMatrix(
-                  i=df$row_idx, j=df$col_idx,
-                  x=df$odds_ratio, dims=dim(counts), dimnames=dimnames(counts),
-                  index1=TRUE),
-                odds_ratio_regularized= sparseMatrix(
-                  i=df$row_idx, j=df$col_idx,
-                  x=df$odds_ratio_regularized,
-                  dims=dim(counts), dimnames=dimnames(counts),
-                  index1=TRUE)),
-    colData=data.frame(
-      demux_type = demux_type,
-      assignment = assignment
-    ),
-    metadata=list(log_pval_cutoff=logpval_cutoff)
-  )
+    SummarizedExperiment(
+        assays=list(assigned=mat_assigned, log_pval=mat_logpval,
+                    odds_ratio= sparseMatrix(
+                        i=df$row_idx, j=df$col_idx,
+                        x=df$odds_ratio, dims=dim(counts), dimnames=dimnames(counts),
+                        index1=TRUE),
+                    odds_ratio_regularized= sparseMatrix(
+                        i=df$row_idx, j=df$col_idx,
+                        x=df$odds_ratio_regularized,
+                        dims=dim(counts), dimnames=dimnames(counts),
+                        index1=TRUE)),
+        colData=data.frame(
+            demux_type = demux_type,
+            assignment = assignment
+        ),
+        metadata=list(log_pval_cutoff=logpval_cutoff)
+    )
 }
