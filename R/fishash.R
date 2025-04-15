@@ -48,7 +48,9 @@ fishash <- function(counts, padj_cutoff=.05,
                     exclude_empty=FALSE) {
     padj_method <- match.arg(padj_method)
 
-    background <- NULL
+    counts <- as(counts, 'CsparseMatrix')
+
+    background <- counts
     prev <- NULL
 
     for (i in 1:(refit+1)) {
@@ -62,7 +64,7 @@ fishash <- function(counts, padj_cutoff=.05,
             exclude_empty=exclude_empty
         )
 
-        background <- counts - assay(res, 'assigned') * counts
+        background[assay(res, 'assigned')] <- 0
 
         if (!is.null(prev) &&
                 sum(abs(prev - assay(res, 'assigned'))) == 0) {
@@ -104,10 +106,6 @@ fishash_internal <- function(counts, padj_cutoff, padj_method,
         row_idx=counts@i+1,
         col_idx=counts@j+1
     )
-
-    if (is.null(background)) {
-        background <- counts
-    }
 
     col_sums_bg <- colSums(background)
     row_sums_bg <- rowSums(background)
