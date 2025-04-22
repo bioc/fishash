@@ -64,7 +64,9 @@ fishash <- function(counts, padj_cutoff=.05,
             exclude_empty=exclude_empty
         )
 
-        background[assay(res, 'assigned')] <- 0
+        #background[assay(res, 'assigned')] <- 0
+        # HACK logical indexing fails for large matrices
+        background <- background - background * assay(res, 'assigned')
 
         if (!is.null(prev) &&
                 sum(abs(prev - assay(res, 'assigned'))) == 0) {
