@@ -37,6 +37,7 @@
 #'
 #' @export
 #' @importFrom SummarizedExperiment SummarizedExperiment assay
+#' @importFrom S4Vectors metadata `metadata<-`
 #' @importFrom Matrix colSums rowSums Diagonal sparseMatrix
 #' @importFrom sparseMatrixStats colMins
 #' @importFrom dplyr case_when group_by summarize

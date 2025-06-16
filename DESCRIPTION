@@ -13,6 +13,7 @@ Imports:
     extraDistr,
     Matrix,
     methods,
+    S4Vectors,
     SummarizedExperiment,
     sparseMatrixStats
 Depends: 
