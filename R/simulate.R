@@ -102,13 +102,6 @@ simulate_guidebender <- function(
     guide_infection_freqs <- as.vector(rdirichlet(
         1, guide_infection_alpha * rep(1, n_guides)))
 
-    mat_n_infections <- sapply(infections_per_cell,
-                               function(i) rmultinom(1, i, guide_infection_freqs))
-
-    stopifnot(colSums(mat_n_infections) == infections_per_cell)
-
-    mat_truth <- mat_n_infections > 0
-
     # guide size factors for reads per observation
     d_g_guide <- exp(rnorm(n_guides, mean=0, sd=d_sigma_guide))
 
@@ -126,6 +119,14 @@ simulate_guidebender <- function(
     # cell and droplet size factor
     d_n_cell <- exp(rnorm(n_cells, mean=d_mu_cell, sd=d_sigma_cell))
     d_n_drop <- exp(rnorm(n_cells, mean=d_mu_drop, sd=d_sigma_drop))
+
+    # sample the true infections
+    mat_n_infections <- sapply(infections_per_cell,
+                               function(i) rmultinom(1, i, guide_infection_freqs))
+
+    stopifnot(colSums(mat_n_infections) == infections_per_cell)
+
+    mat_truth <- mat_n_infections > 0
 
     # expected counts from the signal
     mu_ng_cell <- mat_n_infections
