@@ -10,6 +10,7 @@ res <- simulate_guidebender2(
     snr=4,
     count_per_cell=100,
     frac_noise_endo=.75,
+    #chunk_cells=100,
     return_sparse_only=TRUE
 )
 

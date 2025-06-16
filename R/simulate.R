@@ -1,7 +1,7 @@
 #' Simulate guide count matrix based on a cellbender-like model
 #'
-#' @param n_guides Number of guides
-#' @param n_cells Number of cells
+#' @param n_guides Number of guides. Must be strictly greater than 1.
+#' @param n_cells Number of cells. Must be strictly greater than 1.
 #' @param moi The pre-selection multiplicity of infection. The
 #'     Poisson-rate in the hurdle Poisson for the number of guides per
 #'     cell.
@@ -34,11 +34,15 @@
 #'     counts
 #' @param Phi_noise The negative binomial overdispersion of the noise
 #'     counts
-#' @param return_sparse_only Whether to return only the sparse matrices of
-#'     counts and assignments, or whether to also return the dense
-#'     matrices of Poisson rates and latent odds-ratios.
-#' @param median_per_cell If non-null, the total number of counts is rescaled
-#'     so that this is the median per cell.
+#' @param return_sparse_only Whether to return only the sparse
+#'     matrices of counts and assignments, or whether to also return
+#'     the dense matrices of Poisson rates and latent odds-ratios.
+#' @param median_per_cell If non-null, the total number of counts is
+#'     rescaled so that this is the median per cell.
+#' @param chunk_cells Simulate in chunks, with this many cells per
+#'     chunk.  This option can reduce memory usage, when used in
+#'     combination with `return_sparse_only=TRUE`. Must perfectly
+#'     divide `n_cells`, and be strictly greater than 1.
 #'
 #' @returns A SummarizedExperiment, with the following assays:
 #' \describe{
@@ -58,7 +62,7 @@
 #' @export
 #' @importFrom extraDistr rtpois rdirichlet
 #' @importFrom stats rbeta rbinom rgamma rmultinom rnorm rpois median
-#' @importFrom SummarizedExperiment SummarizedExperiment
+#' @importFrom SummarizedExperiment SummarizedExperiment cbind
 simulate_guidebender <- function(
     # Rows and columns of the count matrix
     n_guides, n_cells,
@@ -92,8 +96,18 @@ simulate_guidebender <- function(
     # odds-ratios as well
     return_sparse_only=FALSE,
     # rescale the total counts so this is the median per cell
-    median_per_cell=NULL
+    median_per_cell=NULL,
+    # Simulate cells in chunks to preserve memory
+    chunk_cells=NULL
 ) {
+    if (n_cells <= 1) {
+        stop("n_cells must be strictly greater than 1.")
+    }
+
+    if (n_guides <= 1) {
+        stop("n_guides must be strictly greater than 1.")
+    }
+
     # sample number of guides per cell
     infections_per_cell <- rtpois(n_cells, moi, a=0)
     infections_per_cell[as.logical(rbinom(n_cells, 1, hurdle_prob))] <- 0
@@ -120,9 +134,96 @@ simulate_guidebender <- function(
     d_n_cell <- exp(rnorm(n_cells, mean=d_mu_cell, sd=d_sigma_cell))
     d_n_drop <- exp(rnorm(n_cells, mean=d_mu_drop, sd=d_sigma_drop))
 
+    cell_names <- paste0("cell_", 1:n_cells)
+
+    if (is.null(chunk_cells)) {
+        simulate_guidebender_helper(
+            guide_infection_freqs=guide_infection_freqs,
+            infections_per_cell=infections_per_cell,
+            chi_g_a=chi_g_a,
+            d_g_guide=d_g_guide,
+            rho_n=rho_n,
+            eps_n=eps_n,
+            d_n_cell=d_n_cell,
+            d_n_drop=d_n_drop,
+            cell_names=cell_names,
+            Phi_cell=Phi_cell,
+            Phi_noise=Phi_noise,
+            median_per_cell=median_per_cell,
+            return_sparse_only=return_sparse_only
+        )
+    } else {
+        if (chunk_cells <= 1) {
+            stop("chunk_cells must be strictly greater than 1.")
+        }
+
+        if (n_cells %% chunk_cells != 0) {
+            stop(paste(
+                "chunk_cells must be a proper divisor of n_cells",
+                sprintf(
+                    "(%d %% %d == %d != 0)",
+                    n_cells, chunk_cells, n_cells %% chunk_cells
+                )
+            ))
+        }
+
+        n_chunks <- n_cells / chunk_cells
+        list_idxs <- lapply(
+            1:n_chunks,
+            function(i) {
+                seq(
+                    from=(i-1) * chunk_cells + 1,
+                    to=i * chunk_cells,
+                    by=1
+                )
+            }
+        )
+
+        res <- lapply(
+            list_idxs,
+            function(idxs) {
+                simulate_guidebender_helper(
+                    guide_infection_freqs=guide_infection_freqs,
+                    chi_g_a=chi_g_a,
+                    d_g_guide=d_g_guide,
+                    infections_per_cell=infections_per_cell[idxs],
+                    rho_n=rho_n[idxs],
+                    eps_n=eps_n[idxs],
+                    d_n_cell=d_n_cell[idxs],
+                    d_n_drop=d_n_drop[idxs],
+                    cell_names=cell_names[idxs],
+                    Phi_cell=Phi_cell,
+                    Phi_noise=Phi_noise,
+                    median_per_cell=median_per_cell,
+                    return_sparse_only=return_sparse_only
+                )
+            }
+        )
+
+        do.call(cbind, res)
+    }
+}
+
+simulate_guidebender_helper <- function(
+    guide_infection_freqs,
+    chi_g_a,
+    d_g_guide,
+    infections_per_cell,
+    rho_n,
+    eps_n,
+    d_n_cell,
+    d_n_drop,
+    cell_names,
+    Phi_cell,
+    Phi_noise,
+    median_per_cell,
+    return_sparse_only
+) {
     # sample the true infections
-    mat_n_infections <- sapply(infections_per_cell,
-                               function(i) rmultinom(1, i, guide_infection_freqs))
+    mat_n_infections <- sapply(
+        infections_per_cell,
+        function(i) rmultinom(1, i, guide_infection_freqs)
+    )
 
     stopifnot(colSums(mat_n_infections) == infections_per_cell)
 
@@ -221,7 +322,7 @@ simulate_guidebender <- function(
         )
     }
 
-    colnames(res) <- paste0("cell_", 1:ncol(res))
+    colnames(res) <- cell_names
     rownames(res) <- paste0("feature_", 1:nrow(res))
 
     return(res)

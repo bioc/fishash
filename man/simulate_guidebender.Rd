@@ -22,13 +22,14 @@ simulate_guidebender(
   Phi_cell = 1,
   Phi_noise = 0,
   return_sparse_only = FALSE,
-  median_per_cell = NULL
+  median_per_cell = NULL,
+  chunk_cells = NULL
 )
 }
 \arguments{
-\item{n_guides}{Number of guides}
+\item{n_guides}{Number of guides. Must be strictly greater than 1.}
 
-\item{n_cells}{Number of cells}
+\item{n_cells}{Number of cells. Must be strictly greater than 1.}
 
 \item{moi}{The pre-selection multiplicity of infection. The
 Poisson-rate in the hurdle Poisson for the number of guides per
@@ -76,12 +77,17 @@ counts}
 \item{Phi_noise}{The negative binomial overdispersion of the noise
 counts}
 
-\item{return_sparse_only}{Whether to return only the sparse matrices of
-counts and assignments, or whether to also return the dense
-matrices of Poisson rates and latent odds-ratios.}
+\item{return_sparse_only}{Whether to return only the sparse
+matrices of counts and assignments, or whether to also return
+the dense matrices of Poisson rates and latent odds-ratios.}
 
-\item{median_per_cell}{If non-null, the total number of counts is rescaled
-so that this is the median per cell.}
+\item{median_per_cell}{If non-null, the total number of counts is
+rescaled so that this is the median per cell.}
+
+\item{chunk_cells}{Simulate in chunks, with this many cells per
+chunk.  This option can reduce memory usage, when used in
+combination with \code{return_sparse_only=TRUE}. Must perfectly
+divide \code{n_cells}, and be strictly greater than 1.}
 }
 \value{
 A SummarizedExperiment, with the following assays:
