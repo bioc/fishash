@@ -11,7 +11,7 @@ fishash(
   min_count = 2,
   min_frac = 0,
   refit = 0,
-  exclude_empty = FALSE
+  exclude_empty = TRUE
 )
 }
 \arguments{

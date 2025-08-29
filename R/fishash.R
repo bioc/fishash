@@ -46,7 +46,7 @@
 fishash <- function(counts, padj_cutoff=.05,
                     padj_method=c("GS", "BY", "BH"),
                     min_count=2, min_frac=0, refit=0,
-                    exclude_empty=FALSE) {
+                    exclude_empty=TRUE) {
     padj_method <- match.arg(padj_method)
 
     counts <- as(counts, 'CsparseMatrix')
