@@ -12,10 +12,16 @@
 #'     `guide_infection_alpha`.
 #' @param d_sigma_guide The guide expression size factor
 #'     (`d_g^{guide}`) is lognormal with mean 0 and SD `d_sigma_guide`
-#' @param endo_shape_sum The guide frequencies in the
-#'     "endogeneous noise" `\chi_g^a` is Dirichlet distributed; the
-#'     shape parameter is proportional to `d_g^{guide} * p_g`, and
-#'     sums to `endo_shape_sum * n_guides`.
+#' @param endo_shape_sum The endogenouse noise guide frequencies
+#'     `\chi_g^a` is Dirichlet distributed; its shape parameters sum
+#'     to `endo_shape_sum * n_guides`.
+#' @param endo_shape_flat If this is 1, then the endogenous noise
+#'     guide frequencies `\chi_g^a` are Dirichlet distributed with
+#'     constant shape parameter equal to `endo_shape_sum`. If this is
+#'     0, then the Dirichlet shape parameters are instead proportional
+#'     to `d_g^{guide} * p_g`, and sum to `endo_shape_sum * n_guides`.
+#'     If this is between 0 and 1, it interpolates between these 2
+#'     options.
 #' @param d_mu_drop The droplet ambient size factor `d_n^{drop}` is
 #'     lognormal with location `d_mu_drop`.
 #' @param d_sigma_drop The droplet ambient size factor `d_n^{drop}` is
@@ -72,9 +78,12 @@ simulate_guidebender <- function(
     guide_infection_alpha=1,
     # guide size factor is lognormal(0, d_sigma^guide)
     d_sigma_guide=1,
-    # endogenous noise is Dirichlet with shape proportional to the
-    # guide counts in signal and summing to n_guides * endo_shape_sum
+    # endogenous noise is Dirichlet with parameters summing to n_guides * endo_shape_sum
     endo_shape_sum=1,
+    # whether Dirichlet parameters for endogenous noise are
+    # proportional to signal guide counts (0), to a constant (1),
+    # or use a number between 0 and 1 to interpolate between those options
+    endo_shape_flat=0,
     # droplet size factor. Roughly the expected ambient droplet counts per cell
     # d_n^drop ~ lognormal(d_mu^drop, d_sigma^drop)
     d_mu_drop=log(10), d_sigma_drop=1,
@@ -122,8 +131,9 @@ simulate_guidebender <- function(
     # ambient background guide counts (\chi_g^a)
     chi_g_a <- guide_infection_freqs * d_g_guide
     chi_g_a <- chi_g_a / sum(chi_g_a)
-    chi_g_a <- as.vector(rdirichlet(
-        1, chi_g_a * n_guides * endo_shape_sum))
+    chi_g_a <- chi_g_a * n_guides * endo_shape_sum
+    chi_g_a <- (1 - endo_shape_flat) * chi_g_a + endo_shape_flat * rep(endo_shape_sum, n_guides)
+    chi_g_a <- as.vector(rdirichlet(1, chi_g_a))
 
     # fraction of exogenous reads
     rho_n <- rbeta(n_cells, rho_alpha, rho_beta)

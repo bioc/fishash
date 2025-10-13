@@ -12,6 +12,7 @@ simulate_guidebender(
   guide_infection_alpha = 1,
   d_sigma_guide = 1,
   endo_shape_sum = 1,
+  endo_shape_flat = 0,
   d_mu_drop = log(10),
   d_sigma_drop = 1,
   d_mu_cell = log(10),
@@ -45,10 +46,17 @@ frequencies (\code{p_g}) is Dirichlet-distributed with shape
 \item{d_sigma_guide}{The guide expression size factor
 (\code{d_g^{guide}}) is lognormal with mean 0 and SD \code{d_sigma_guide}}
 
-\item{endo_shape_sum}{The guide frequencies in the
-"endogeneous noise" \verb{\\chi_g^a} is Dirichlet distributed; the
-shape parameter is proportional to \code{d_g^{guide} * p_g}, and
-sums to \code{endo_shape_sum * n_guides}.}
+\item{endo_shape_sum}{The endogenouse noise guide frequencies
+\verb{\\chi_g^a} is Dirichlet distributed; its shape parameters sum
+to \code{endo_shape_sum * n_guides}.}
+
+\item{endo_shape_flat}{If this is 1, then the endogenous noise
+guide frequencies \verb{\\chi_g^a} are Dirichlet distributed with
+constant shape parameter equal to \code{endo_shape_sum}. If this is
+0, then the Dirichlet shape parameters are instead proportional
+to \code{d_g^{guide} * p_g}, and sum to \code{endo_shape_sum * n_guides}.
+If this is between 0 and 1, it interpolates between these 2
+options.}
 
 \item{d_mu_drop}{The droplet ambient size factor \code{d_n^{drop}} is
 lognormal with location \code{d_mu_drop}.}
