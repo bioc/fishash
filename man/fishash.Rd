@@ -11,7 +11,8 @@ fishash(
   min_count = 2,
   min_frac = 0,
   refit = 0,
-  exclude_empty = TRUE
+  exclude_empty = TRUE,
+  background = NULL
 )
 }
 \arguments{
@@ -42,6 +43,10 @@ from Simpson's paradox.}
 
 \item{exclude_empty}{If TRUE, rows and columns that have 0 counts
 are ignored for multiple testing correction.}
+
+\item{background}{Optional matrix of background noise counts,
+e.g. estimated from demuxEM, which are used for non-cell
+entries of the 2x2 table.}
 }
 \value{
 A SummarizedExperiment. The colData has columns for

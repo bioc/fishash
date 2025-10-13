@@ -21,6 +21,9 @@
 #'     from Simpson's paradox.
 #' @param exclude_empty If TRUE, rows and columns that have 0 counts
 #'     are ignored for multiple testing correction.
+#' @param background Optional matrix of background noise counts,
+#'     e.g. estimated from demuxEM, which are used for non-cell
+#'     entries of the 2x2 table.
 #'
 #' @returns A SummarizedExperiment. The colData has columns for
 #'   whether the cell is singlet, doublet, or unassigned
@@ -45,13 +48,22 @@
 #' @importFrom stats p.adjust phyper
 fishash <- function(counts, padj_cutoff=.05,
                     padj_method=c("GS", "BY", "BH"),
-                    min_count=2, min_frac=0, refit=0,
-                    exclude_empty=TRUE) {
+                    min_count=2, min_frac=0,
+                    refit=0,
+                    exclude_empty=TRUE,
+                    background=NULL) {
     padj_method <- match.arg(padj_method)
 
     counts <- as(counts, 'CsparseMatrix')
 
-    background <- counts
+    if (is.null(background)) {
+        background <- counts
+    } else if (refit > 0) {
+        # the refitting procedure assumes the background is derived
+        # from the counts, so it's not allowed to set a separate
+        # background
+        stop("Non-null background with refitting not allowed")
+    }
     prev <- NULL
 
     for (i in 1:(refit+1)) {
