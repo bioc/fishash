@@ -56,17 +56,20 @@ fishash <- function(counts, padj_cutoff=.05,
 
     counts <- as(counts, 'CsparseMatrix')
 
-    if (is.null(background)) {
-        background <- counts
-    } else if (refit > 0) {
+    if (!is.null(background) & refit > 0) {
         # the refitting procedure assumes the background is derived
         # from the counts, so it's not allowed to set a separate
         # background
         stop("Non-null background with refitting not allowed")
     }
-    prev <- NULL
 
     for (i in 1:(refit+1)) {
+        if (is.null(background) & i == 1) {
+            background <- counts
+        } else if (i > 1) {
+            background <- impute_masked_counts(counts, mask)
+        }
+
         res <- fishash_internal(
             counts=counts,
             padj_cutoff=padj_cutoff,
@@ -77,12 +80,24 @@ fishash <- function(counts, padj_cutoff=.05,
             exclude_empty=exclude_empty
         )
 
-        #background[assay(res, 'assigned')] <- 0
-        # HACK logical indexing fails for large matrices
-        background <- background - background * assay(res, 'assigned')
+        if (i > 3) {
+            # use | to mask entries that were assigned in previous
+            # iterations but not the most recent one. Often, these are
+            # borderline significant, so worth masking. This also
+            # guarantees convergence and prevents "alternating"
+            # behavior where a borderline entry flips between assigned
+            # or not after every iteration
+            mask <- mask | assay(res, 'assigned')
+        } else {
+            # However, on the first couple iterations, the assignments
+            # are less stable, and in particular Simpson's paradox may
+            # cause substantial false positives on the first
+            # iteration. So, we don't use | on the first couple
+            # iterations.
+            mask <- assay(res, 'assigned')
+        }
 
-        if (!is.null(prev) &&
-                sum(abs(prev - assay(res, 'assigned'))) == 0) {
+        if (i > 1 && sum(abs(prev - assay(res, 'assigned'))) == 0) {
             break
         }
 
