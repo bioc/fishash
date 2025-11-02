@@ -1,8 +1,11 @@
 #' For a matrix of counts, impute masked entries via an alternating algorithm
 #'
+#' More specifically, we perform rank-1 matrix completion on the masked counts
+#' optimizing the Poisson likelihood of the unmasked values.
+#'
 #' @param counts Matrix of counts
 #' @param mask Matrix of 0/1 or TRUE/FALSE indicating which entries to mask
-#' @param eps Stops when the relative change in colSums and rowSums less than this
+#' @param eps Stops when the relative change in column and row factors less than this
 #' @param max_iter Maximum iterations for the alternating algorithm
 #' @param verbose Whether to produce verbose output
 #'
@@ -14,18 +17,20 @@ impute_masked_counts <- function(counts, mask,
     counts0 <- counts - counts * mask
     counts <- counts0
 
+    skip_row <- rowSums(mask) == ncol(mask)
+    skip_col <- colSums(mask) == nrow(mask)
+
+    cell_sizes <- rep(1, ncol(counts))
+
     for (i in 1:max_iter) {
-        guide_freqs <- rowSums(counts)
+        guide_freqs <- sum(cell_sizes) - rowSums(mask %*% Diagonal(x=cell_sizes))
+        guide_freqs <- rowSums(counts0) / guide_freqs
+        guide_freqs[skip_row] <- 0
         guide_freqs <- guide_freqs / sum(guide_freqs)
 
-        cell_sizes <- colSums(counts)
-        if (i == 1) {
-            sz_fac_correction <- Diagonal(x=guide_freqs) %*% mask
-            sz_fac_correction <- 1 - colSums(sz_fac_correction)
-            sz_fac_correction[sz_fac_correction == 0] <- 1
-
-            cell_sizes <- cell_sizes / sz_fac_correction
-        }
+        cell_sizes <- 1 - colSums(Diagonal(x=guide_freqs) %*% mask)
+        cell_sizes <- colSums(counts0) / cell_sizes
+        cell_sizes[skip_col] <- 0
 
         mask_imputed <- Diagonal(x=guide_freqs) %*% (
             mask %*% Diagonal(x=cell_sizes))

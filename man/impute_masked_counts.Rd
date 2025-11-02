@@ -11,12 +11,13 @@ impute_masked_counts(counts, mask, eps = 1e-04, max_iter = 10, verbose = FALSE)
 
 \item{mask}{Matrix of 0/1 or TRUE/FALSE indicating which entries to mask}
 
-\item{eps}{Stops when the relative change in colSums and rowSums less than this}
+\item{eps}{Stops when the relative change in column and row factors less than this}
 
 \item{max_iter}{Maximum iterations for the alternating algorithm}
 
 \item{verbose}{Whether to produce verbose output}
 }
 \description{
-For a matrix of counts, impute masked entries via an alternating algorithm
+More specifically, we perform rank-1 matrix completion on the masked counts
+optimizing the Poisson likelihood of the unmasked values.
 }
