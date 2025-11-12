@@ -8,7 +8,7 @@ test_that("Fishash results on test dataset haven't changed", {
     'fixtures', 'fishash_schraivogel.rds'
   ))
 
-  new_result <- fishash(crispat_schraivogel, exclude_empty=FALSE)
+  new_result <- fishash(crispat_schraivogel, exclude_empty=FALSE, refit=0)
 
   abs_diff <- abs(
     assay(expected_result, 'log_pval') - assay(new_result, 'log_pval')

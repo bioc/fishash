@@ -10,7 +10,7 @@ fishash(
   padj_method = c("GS", "BY", "BH"),
   min_count = 2,
   min_frac = 0,
-  refit = 0,
+  refit = 10,
   exclude_empty = TRUE,
   background = NULL
 )
@@ -35,11 +35,12 @@ feature present.}
 \item{refit}{Whether to iteratively refit the model, re-estimating
 the background vs signal counts from the previous iteration. If
 0, no refitting is done; if a positive integer, reruns with
-that many iterations.  The significant entries from the
-previous iteration are subtracted from the counts to get a
-matrix of "background noise" counts, which are then used for
-non-cell entries of the 2x2 table.  This may mitigate effects
-from Simpson's paradox.}
+that many iterations (or until convergence, whichever is
+first).  The significant entries from the previous iteration
+are subtracted from the counts to get a matrix of
+"background noise" counts, which are then used for non-cell
+entries of the 2x2 table.  This may mitigate effects from
+Simpson's paradox.}
 
 \item{exclude_empty}{If TRUE, rows and columns that have 0 counts
 are ignored for multiple testing correction.}
