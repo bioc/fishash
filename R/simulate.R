@@ -77,7 +77,7 @@ simulate_guidebender <- function(
     # probability of sampling over guides is dirichlet
     guide_infection_alpha=1,
     # guide size factor is lognormal(0, d_sigma^guide)
-    d_sigma_guide=1,
+    d_sigma_guide=0.5,
     # endogenous noise is Dirichlet with parameters summing to n_guides * endo_shape_sum
     endo_shape_sum=1,
     # whether Dirichlet parameters for endogenous noise are
@@ -86,14 +86,14 @@ simulate_guidebender <- function(
     endo_shape_flat=0,
     # droplet size factor. Roughly the expected ambient droplet counts per cell
     # d_n^drop ~ lognormal(d_mu^drop, d_sigma^drop)
-    d_mu_drop=log(10), d_sigma_drop=1,
+    d_mu_drop=log(10), d_sigma_drop=0.5,
     # cell size factor. Roughly the expected "signal" counts per cell per guide
     # note it slightly differs from cellbender defn (counts per cell only).
     # d_n^cell ~ lognormal(d_mu^cell, d_sigma^cell)
-    d_mu_cell=log(10), d_sigma_cell=1,
+    d_mu_cell=log(60), d_sigma_cell=0.5,
     # "exogenous" prob (index hopping, chimeras)
     # rho_n ~ Beta(rho_alpha, rho_beta)
-    rho_alpha=1.5, rho_beta=50,
+    rho_alpha=0.5, rho_beta=9.5,
     # droplet-specific capture efficiency param, close to 1
     # epsilon_n ~ Gamma(shape=epsilon_alpha, mean=1)
     eps_alpha=50,
