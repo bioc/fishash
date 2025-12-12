@@ -98,6 +98,7 @@ fishash <- function(counts, padj_cutoff=.05,
             mask <- assay(res, 'assigned')
         }
 
+        # if converged (no change in assignments), end iterations
         if (i > 1 && sum(abs(prev - assay(res, 'assigned'))) == 0) {
             break
         }

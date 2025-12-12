@@ -17,8 +17,8 @@ impute_masked_counts <- function(counts, mask,
     counts0 <- counts - counts * mask
     counts <- counts0
 
-    skip_row <- rowSums(mask) == ncol(mask)
-    skip_col <- colSums(mask) == nrow(mask)
+    skip_row <- rowSums(counts0) == 0
+    skip_col <- colSums(counts0) == 0
 
     cell_sizes <- rep(1, ncol(counts))
 
