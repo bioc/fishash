@@ -8,11 +8,11 @@ UMI counts, based on treating the count matrix as a contingency table.
 For each cell barcode and guide barcode, `fishash` tests how likely
 the 2 barcodes are to co-occur in reads.  More specifically, it tests
 whether the 2 barcodes have an odds ratio greater than 1 using a
-one-sided Fisher's exact test. The method also includes a novel
-procedure for correcting hidden confounding due to Simpson's paradox,
-and performs a block-dependence-aware multiple testing correction
-(assuming that tests from different cells are independent, but tests
-within a cell are dependent).
+one-sided Fisher's exact test. The method also includes a procedure to
+correct for hidden confounding due to Simpson's paradox, and performs
+a block-dependence-aware multiple testing correction (assuming that
+tests from different cells are independent, but tests within a cell
+are dependent).
 
 ## Installation
 
@@ -44,3 +44,9 @@ For more options, see the help page:
 ```{R}
 help(fishash)
 ```
+
+## Vignette
+
+See the
+[vignette](https://jackkamm.github.io/fishash-vignette.html)
+for an example on how to use the package.

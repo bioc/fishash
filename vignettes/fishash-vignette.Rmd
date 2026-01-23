@@ -1,8 +1,8 @@
 ---
-title: "Demonstration of fishash on Schraivogel et al 2020 dataset"
+title: "Fishash vignette"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{fishash-schraivogel}
+  %\VignetteIndexEntry{Fishash vignette}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -14,16 +14,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-`fishash` is a method for calling guides in perturbseq data from UMI
-counts. For each cell barcode and guide barcode, it tests whether the
-2 barcodes have an odds ratio greater than 1 using a one-sided
-Fisher's exact test. It then performs a multiple testing correction
-using the method of [Guo and Sarkar
-2020](https://doi.org/10.1016/j.jspi.2018.03.008), assuming that tests
-from different cells are independent, but tests within a cell are
-dependent.
+We illustrate fishash on the [Schraivogel et al
+2020](https://www.nature.com/articles/s41592-020-0837-5) CRISPRi
+dataset which is also bundled with the [Python crispat
+package](https://github.com/velten-group/crispat).
 
-```{r setup}
+```{r setup, message = FALSE}
 library(magrittr)
 library(fishash)
 library(ggplot2)
@@ -31,11 +27,6 @@ library(dplyr)
 library(SummarizedExperiment)
 library(Matrix)
 ```
-
-We illustrate fishash on the [Schraivogel et al
-2020](https://www.nature.com/articles/s41592-020-0837-5) CRISPRi
-dataset which is also bundled with the [Python crispat
-package](https://github.com/velten-group/crispat).
 
 Loading the data and printing out the first few entries, we can see it
 is a sparse count matrix:
