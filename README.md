@@ -14,6 +14,10 @@ a block-dependence-aware multiple testing correction (assuming that
 tests from different cells are independent, but tests within a cell
 are dependent).
 
+See our
+[preprint](https://www.biorxiv.org/content/10.64898/2026.01.22.701179)
+for a full description of the method.
+
 ## Installation
 
 To install the package, by clone this repo, and run:
