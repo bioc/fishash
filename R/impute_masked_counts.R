@@ -9,7 +9,15 @@
 #' @param max_iter Maximum iterations for the alternating algorithm
 #' @param verbose Whether to produce verbose output
 #'
+#' @return A matrix of the same dimensions as `counts` with masked entries
+#'   replaced by their rank-1 Poisson imputed values.
 #' @export
+#' @examples
+#' counts <- Matrix::Matrix(c(1, 0, 2, 3, 0, 1, 0, 4, 2),
+#'                          nrow = 3, sparse = TRUE)
+#' mask <- Matrix::Matrix(c(0, 1, 0, 0, 0, 1, 0, 0, 1),
+#'                        nrow = 3, sparse = TRUE)
+#' impute_masked_counts(counts, mask)
 #' @importFrom Matrix colSums rowSums Diagonal
 impute_masked_counts <- function(counts, mask,
                                  eps=1e-4, max_iter=10, verbose=FALSE) {
@@ -22,7 +30,7 @@ impute_masked_counts <- function(counts, mask,
 
     cell_sizes <- rep(1, ncol(counts))
 
-    for (i in 1:max_iter) {
+    for (i in seq_len(max_iter)) {
         guide_freqs <- sum(cell_sizes) - rowSums(mask %*% Diagonal(x=cell_sizes))
         guide_freqs <- rowSums(counts0) / guide_freqs
         guide_freqs[skip_row] <- 0
@@ -39,9 +47,9 @@ impute_masked_counts <- function(counts, mask,
 
         if (i > 1) {
             max_guide_diff <- max(abs(log(guide_freqs) - log(prev_freqs)),
-                                  na.rm=T)
+                                  na.rm=TRUE)
             max_size_diff <- max(abs(log(cell_sizes) - log(prev_sizes)),
-                                 na.rm=T)
+                                 na.rm=TRUE)
 
             if (verbose) {
                 message(sprintf(
@@ -50,7 +58,7 @@ impute_masked_counts <- function(counts, mask,
                 ))
             }
 
-            if (max_guide_diff < eps & max_size_diff < eps) {
+            if (max_guide_diff < eps && max_size_diff < eps) {
                 break
             }
         }

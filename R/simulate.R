@@ -64,8 +64,12 @@
 #'  \item{lambd_noise}{The Poisson rate of the noise counts}
 #'  \item{latent_odds_ratio}{The true odds ratio of each cell-guide pair.}
 #' }
-#' 
+#'
 #' @export
+#' @examples
+#' set.seed(123)
+#' sim <- simulate_guidebender(n_guides = 5, n_cells = 20,
+#'                             moi = 0.2, hurdle_prob = 0.1)
 #' @importFrom extraDistr rtpois rdirichlet
 #' @importFrom stats rbeta rbinom rgamma rmultinom rnorm rpois median
 #' @importFrom SummarizedExperiment SummarizedExperiment cbind
@@ -144,7 +148,7 @@ simulate_guidebender <- function(
     d_n_cell <- exp(rnorm(n_cells, mean=d_mu_cell, sd=d_sigma_cell))
     d_n_drop <- exp(rnorm(n_cells, mean=d_mu_drop, sd=d_sigma_drop))
 
-    cell_names <- paste0("cell_", 1:n_cells)
+    cell_names <- paste0("cell_", seq_len(n_cells))
 
     if (is.null(chunk_cells)) {
         simulate_guidebender_helper(
@@ -168,18 +172,15 @@ simulate_guidebender <- function(
         }
 
         if (n_cells %% chunk_cells != 0) {
-            stop(paste(
-                "chunk_cells must be a proper divisor of n_cells",
-                sprintf(
-                    "(%d %% %d == %d != 0)",
-                    n_cells, chunk_cells, n_cells %% chunk_cells
-                )
+            stop(sprintf(
+                "chunk_cells must be a proper divisor of n_cells (%d %% %d == %d != 0)",
+                n_cells, chunk_cells, n_cells %% chunk_cells
             ))
         }
 
         n_chunks <- n_cells / chunk_cells
         list_idxs <- lapply(
-            1:n_chunks,
+            seq_len(n_chunks),
             function(i) {
                 seq(
                     from=(i-1) * chunk_cells + 1,
@@ -230,9 +231,10 @@ simulate_guidebender_helper <- function(
     return_sparse_only
 ) {
     # sample the true infections
-    mat_n_infections <- sapply(
+    mat_n_infections <- vapply(
         infections_per_cell,
-        function(i) rmultinom(1, i, guide_infection_freqs)
+        function(i) as.vector(rmultinom(1, i, guide_infection_freqs)),
+        FUN.VALUE = integer(length(guide_infection_freqs))
     )
 
     stopifnot(colSums(mat_n_infections) == infections_per_cell)
@@ -333,7 +335,7 @@ simulate_guidebender_helper <- function(
     }
 
     colnames(res) <- cell_names
-    rownames(res) <- paste0("feature_", 1:nrow(res))
+    rownames(res) <- paste0("feature_", seq_len(nrow(res)))
 
     return(res)
 }
@@ -373,8 +375,15 @@ simulate_guidebender_helper <- function(
 #' @param ... Additional arguments to pass to
 #'     `simulate_guidebender`. Note the following arguments must NOT
 #'     be specified: `d_mu_drop`, `d_mu_cell`, `rho_alpha`, `rho_beta`.
-#' 
+#'
+#' @return A SummarizedExperiment as returned by `simulate_guidebender`.
 #' @export
+#' @examples
+#' set.seed(123)
+#' sim <- simulate_guidebender2(n_guides = 5, n_cells = 20,
+#'                              moi = 0.2, hurdle_prob = 0.1,
+#'                              snr = 5, count_per_cell = 100,
+#'                              frac_noise_endo = 0.5)
 simulate_guidebender2 <- function(
     # Rows and columns of the count matrix
     n_guides, n_cells,

@@ -1,14 +1,21 @@
 Package: fishash
-Title: Cell hashing with one-sided Fisher test
-Version: 0.4.1
-Authors@R: 
+Title: Cell Hashing with One-Sided Fisher Test
+Version: 0.99.0
+Authors@R:
     person("Jack", "Kamm", , "kammj2@gene.com", role = c("aut", "cre"))
-Description: Cell hashing with one-sided Fisher test
+Description: Assigns guide RNAs or other genetic perturbations to cells in
+    single-cell sequencing experiments using a one-sided Fisher's exact test.
+    Implements an iterative refitting procedure to mitigate Simpson's paradox,
+    supports multiple false discovery rate correction methods
+    (Benjamini-Hochberg, Benjamini-Yekutueli, and Guo & Sarkar 2020), and
+    provides simulation utilities for benchmarking demultiplexing methods.
+    Results are returned as SummarizedExperiment objects.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-Imports: 
+biocViews: SingleCell, Sequencing, Preprocessing, StatisticalMethod
+Imports:
     dplyr,
     extraDistr,
     Matrix,
@@ -16,10 +23,11 @@ Imports:
     S4Vectors,
     SummarizedExperiment,
     sparseMatrixStats
-Depends: 
-    R (>= 3.5)
-LazyData: true
-Suggests: 
+Depends:
+    R (>= 4.5.0)
+LazyData: false
+Suggests:
+    BiocStyle,
     ggplot2,
     knitr,
     magrittr,
@@ -27,3 +35,5 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+URL: https://github.com/jackkamm/fishash
+BugReports: https://github.com/jackkamm/fishash/issues

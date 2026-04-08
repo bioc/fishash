@@ -116,3 +116,8 @@ When \code{return_sparse_only} is \code{FALSE}, the following assays are also ad
 \description{
 Simulate guide count matrix based on a cellbender-like model
 }
+\examples{
+set.seed(123)
+sim <- simulate_guidebender(n_guides = 5, n_cells = 20,
+                            moi = 0.2, hurdle_prob = 0.1)
+}

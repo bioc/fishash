@@ -20,4 +20,8 @@ crispat_schraivogel
 Copy of the Schraivogel et al 2020 CRISPRi dataset bundled with the
 Python crispat package.
 }
+\examples{
+data(crispat_schraivogel)
+crispat_schraivogel[seq_len(5), seq_len(5)]
+}
 \keyword{datasets}

@@ -67,6 +67,9 @@ with scale \code{d_sigma_cell}.}
 \code{simulate_guidebender}. Note the following arguments must NOT
 be specified: \code{d_mu_drop}, \code{d_mu_cell}, \code{rho_alpha}, \code{rho_beta}.}
 }
+\value{
+A SummarizedExperiment as returned by \code{simulate_guidebender}.
+}
 \description{
 Alternative interface to \code{simulate_guidebender} that tries to have
 more interpretable input parameters, in particular: Signal to Noise
@@ -74,4 +77,11 @@ Ratio, count per cell, and fraction of noise that is endogeneous vs
 exogeneous. These replace the following parameters from
 \code{simulate_guidebender} which should not be used with this function:
 \code{d_mu_drop}, \code{d_mu_cell}, \code{rho_alpha}, \code{rho_beta}.
+}
+\examples{
+set.seed(123)
+sim <- simulate_guidebender2(n_guides = 5, n_cells = 20,
+                             moi = 0.2, hurdle_prob = 0.1,
+                             snr = 5, count_per_cell = 100,
+                             frac_noise_endo = 0.5)
 }

@@ -17,7 +17,18 @@ impute_masked_counts(counts, mask, eps = 1e-04, max_iter = 10, verbose = FALSE)
 
 \item{verbose}{Whether to produce verbose output}
 }
+\value{
+A matrix of the same dimensions as \code{counts} with masked entries
+replaced by their rank-1 Poisson imputed values.
+}
 \description{
 More specifically, we perform rank-1 matrix completion on the masked counts
 optimizing the Poisson likelihood of the unmasked values.
+}
+\examples{
+counts <- Matrix::Matrix(c(1, 0, 2, 3, 0, 1, 0, 4, 2),
+                         nrow = 3, sparse = TRUE)
+mask <- Matrix::Matrix(c(0, 1, 0, 0, 0, 1, 0, 0, 1),
+                       nrow = 3, sparse = TRUE)
+impute_masked_counts(counts, mask)
 }

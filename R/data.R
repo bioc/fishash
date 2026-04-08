@@ -6,4 +6,7 @@
 #' @format ## `crispat_schraivogel`
 #' A sparse matrix of UMI counts with 86 rows (gRNAs) and 21977 columns (cells).
 #' @source <https://github.com/velten-group/crispat>
+#' @examples
+#' data(crispat_schraivogel)
+#' crispat_schraivogel[seq_len(5), seq_len(5)]
 "crispat_schraivogel"

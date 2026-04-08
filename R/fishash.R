@@ -40,11 +40,14 @@
 #'   assay is EXPERIMENTAL and subject to change.
 #'
 #' @export
+#' @examples
+#' data(crispat_schraivogel)
+#' result <- fishash(crispat_schraivogel[seq_len(10), seq_len(200)])
 #' @importFrom SummarizedExperiment SummarizedExperiment assay
 #' @importFrom S4Vectors metadata `metadata<-`
 #' @importFrom Matrix colSums rowSums Diagonal sparseMatrix
 #' @importFrom sparseMatrixStats colMins
-#' @importFrom dplyr case_when group_by summarize
+#' @importFrom dplyr case_when
 #' @importFrom methods as
 #' @importFrom stats p.adjust phyper
 fishash <- function(counts, padj_cutoff=.05,
@@ -57,14 +60,14 @@ fishash <- function(counts, padj_cutoff=.05,
 
     counts <- as(counts, 'CsparseMatrix')
 
-    if (!is.null(background) & refit > 0) {
+    if (!is.null(background) && refit > 0) {
         # the refitting procedure assumes the background is derived
         # from the counts, so it's not allowed to set a separate
         # background
         stop("Non-null background with refitting not allowed")
     }
 
-    for (i in 1:(refit+1)) {
+    for (i in seq_len(refit + 1)) {
         if (is.null(background) & i == 1) {
             background <- counts
         } else if (i > 1) {
@@ -184,7 +187,7 @@ fishash_internal <- function(counts, padj_cutoff, padj_method,
 
     if (padj_method %in% c("BH", "BY")) {
         df <- df[order(df$log_pval),]
-        df$rank <- 1:nrow(df)
+        df$rank <- seq_len(nrow(df))
 
         df$padj <- pmin(n_entries * cm * exp(df$log_pval) / df$rank, 1)
 
@@ -232,14 +235,16 @@ fishash_internal <- function(counts, padj_cutoff, padj_method,
 
     df$assigned <- mat_assigned[cbind(df$row_idx, df$col_idx)]
 
-    assign_group_summ <- summarize(
-        group_by(df[df$assigned,], col_idx),
-        assignment=paste(rownames(counts)[row_idx],
-                         collapse=',')
-    )
-
+    df_assigned <- df[df$assigned, ]
     assignment <- rep("", ncol(counts))
-    assignment[assign_group_summ$col_idx] <- assign_group_summ$assignment
+    if (nrow(df_assigned) > 0) {
+        assign_map <- tapply(
+            rownames(counts)[df_assigned$row_idx],
+            df_assigned$col_idx,
+            paste, collapse=','
+        )
+        assignment[as.integer(names(assign_map))] <- assign_map
+    }
 
     SummarizedExperiment(
         assays=list(assigned=mat_assigned, log_pval=mat_logpval,

@@ -1,13 +1,13 @@
 ---
 title: "Fishash vignette"
-output: rmarkdown::html_vignette
+output: BiocStyle::html_document
 vignette: >
   %\VignetteIndexEntry{Fishash vignette}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup-opts, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -19,7 +19,7 @@ We illustrate fishash on the [Schraivogel et al
 dataset which is also bundled with the [Python crispat
 package](https://github.com/velten-group/crispat).
 
-```{r setup, message = FALSE}
+```{r load-packages, message = FALSE}
 library(magrittr)
 library(fishash)
 library(ggplot2)
@@ -31,7 +31,7 @@ library(Matrix)
 Loading the data and printing out the first few entries, we can see it
 is a sparse count matrix:
 
-```{r}
+```{r load-data}
 data(crispat_schraivogel)
 crispat_schraivogel[1:10,1:10]
 ```
@@ -39,7 +39,7 @@ crispat_schraivogel[1:10,1:10]
 We pass this matrix to the `fishash()` function to call
 presence/absence at 5% FDR:
 
-```{r}
+```{r run-fishash}
 res_fishash <- fishash(crispat_schraivogel, padj_cutoff = .05)
 res_fishash
 ```
@@ -47,7 +47,7 @@ res_fishash
 The return value is a SummarizedExperiment. The `assigned` assay is a
 sparse boolean matrix indicating whether we call the guide present:
 
-```{r}
+```{r show-assigned}
 assay(res_fishash, 'assigned')[1:10, 1:10]
 ```
 
@@ -56,27 +56,27 @@ column indicates whether the cell contained 0, 1, or 2+ assigned
 guides, while the `assignment` column is a comma-delimited string
 containing the guides called:
 
-```{r}
+```{r show-coldata}
 colData(res_fishash)
 ```
 
 We can also inspect the log p-values from the Fisher test. Since we
 use a one-sided test, this matrix is also sparse:
 
-```{r}
+```{r show-logpval}
 assay(res_fishash, 'log_pval')[1:10, 1:10]
 ```
 
 Finally, the metadata shows the p-value cutoff selected by the FDR procedure:
 
-```{r}
+```{r show-metadata}
 metadata(res_fishash)
 ```
 
 Below, we plot the nonzero log p-values together with the FDR cutoff,
 coloring by the number of counts in the entry:
 
-```{r, fig.height=8, fig.width=8}
+```{r plot-pvalues, fig.height=8, fig.width=8}
 crispat_schraivogel %>%
   as('TsparseMatrix') %>%
   {data.frame(
@@ -94,4 +94,8 @@ crispat_schraivogel %>%
   scale_fill_viridis_d() +
   theme_classic(base_size=16) +
   theme(legend.position='bottom')
+```
+
+```{r session-info}
+sessionInfo()
 ```
