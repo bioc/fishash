@@ -1,0 +1,28 @@
+* Introduction: minor wording tweaks to final paragraph
+* Section 2.1 (Methods, One-sided Fisher test): spell out definitions of pi, R on separate lines.
+* Figure 1a (Cartoon of droplets with cells and ambient reads): Added legend.
+* Section 2.2 (Methods, Correction for Simpson's Paradox): Section has been reworked, with technical details moved to Appendix B.
+* Figure 2a (Cartoon of Simpson's paradox): Added legend.
+* Section 2.4 (Methods, simulation model): Added sentence to discuss modifying the Cellbender model to add extra noise overdispersion, referring to Appendix C for full details.
+* Section 2.5 (Methods, overview of benchmarked methods)
+  - Change csCLEANSER and dcCLEANSER cutoffs to 80% and 50% (respectively) to match the defaults used in their paper.
+  - Added paragraph to discuss computing precision-recall curves on a subset of methods and datasets.
+* New Section 3.2: Results on K562 genome-wide perturbseq
+* New Figure 4: Accuracy metrics on K562 genome-wide perturbseq
+* Section 3.3 (Results on simulated datasets):
+  - dcCLEANSER replaced crispat-NB as the top method for 1 ≤ MOI ≤ 3 due to its updated default threshold
+  - Added references to new PR-curve subfigures (Figure 5c, Figure 6c)
+  - Added discussion and references for supplemental results in Appendix C (Additional overdispersion) and Appendix D (Extra plots for precision-recall curves)
+* Figure 5: Add subfigure for precision-recall curves. Changes to CLEANSER F1/precison/recall values due to updated thresholds. Crispat-NB added to 80k-guide low-expression scenario.
+* Figure 6: Add subfigure for precision-recall curves. Changes to CLEANSER F1/precision/recall points due to updated thresholds.
+* Section 3.4, Figure 8: Lower SCEPTRE runtime/memory due to changed options. Crispat-NB added to 80k-guide low-expression scenario. Other small changes due to rerunning the pipeline and using the most recent runtimes.
+* Discussion: minor wording tweaks to final paragraph.
+* New Appendix B: Moved technical details for Section 2.2 (Simpson's paradox) to this appendix
+* New Appendix C: Effect of additional noise overdispersion
+  - Figure C.1: Varying guides with overdispersed noise
+  - Figure C.2: Varying MOI with overdispersed noise
+* New Appendix D: Additional plots relating to precision-recall curves
+  - Figure D.1: AUPRCs in two main simulation scenarios
+  - Figure D.2: F1 scores vs AUPRCs
+  - Figure D.3: Precision vs nominal lower bound
+  - Figure D.4: Fishash test statistic histograms
