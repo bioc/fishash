@@ -74,43 +74,20 @@
 #' @importFrom stats rbeta rbinom rgamma rmultinom rnorm rpois median
 #' @importFrom SummarizedExperiment SummarizedExperiment cbind
 simulate_guidebender <- function(
-    # Rows and columns of the count matrix
     n_guides, n_cells,
-    # Hurdle-Poisson parameters for number of infections per cell
     moi, hurdle_prob,
-    # probability of sampling over guides is dirichlet
     guide_infection_alpha=1,
-    # guide size factor is lognormal(0, d_sigma^guide)
     d_sigma_guide=0.5,
-    # endogenous noise is Dirichlet with parameters summing to n_guides * endo_shape_sum
     endo_shape_sum=1,
-    # whether Dirichlet parameters for endogenous noise are
-    # proportional to signal guide counts (0), to a constant (1),
-    # or use a number between 0 and 1 to interpolate between those options
     endo_shape_flat=0,
-    # droplet size factor. Roughly the expected ambient droplet counts per cell
-    # d_n^drop ~ lognormal(d_mu^drop, d_sigma^drop)
     d_mu_drop=log(10), d_sigma_drop=0.5,
-    # cell size factor. Roughly the expected "signal" counts per cell per guide
-    # note it slightly differs from cellbender defn (counts per cell only).
-    # d_n^cell ~ lognormal(d_mu^cell, d_sigma^cell)
     d_mu_cell=log(60), d_sigma_cell=0.5,
-    # "exogenous" prob (index hopping, chimeras)
-    # rho_n ~ Beta(rho_alpha, rho_beta)
     rho_alpha=0.5, rho_beta=9.5,
-    # droplet-specific capture efficiency param, close to 1
-    # epsilon_n ~ Gamma(shape=epsilon_alpha, mean=1)
     eps_alpha=50,
-    # Overdispersion of the signal counts
     Phi_cell=1,
-    # Overdispersion of the noise counts
     Phi_noise=0,
-    # Whether to return only the sparse counts, or the dense latent
-    # odds-ratios as well
     return_sparse_only=FALSE,
-    # rescale the total counts so this is the median per cell
     median_per_cell=NULL,
-    # Simulate cells in chunks to preserve memory
     chunk_cells=NULL
 ) {
     if (n_cells <= 1) {
@@ -385,23 +362,14 @@ simulate_guidebender_helper <- function(
 #'                              snr = 5, count_per_cell = 100,
 #'                              frac_noise_endo = 0.5)
 simulate_guidebender2 <- function(
-    # Rows and columns of the count matrix
     n_guides, n_cells,
-    # Hurdle-Poisson parameters for number of infections per cell
     moi, hurdle_prob,
-    # ratio of signal to noise counts
     snr,
-    # UMIs per cell
     count_per_cell,
-    # fraction of endo vs exo noise
     frac_noise_endo,
-    # sum of rho_alpha and rho_beta
     rho_sum=10,
-    # lognormal SDs
     d_sigma_drop=.5, d_sigma_cell=.5, d_sigma_guide=.5,
-    # whether counts_per_cell is the mean or the median
     use_median = TRUE,
-    # other arguments passed to simulate_guidebender
     ...
 ) {
     avg_infections <- moi / (1-exp(-moi)) * (1 - hurdle_prob)
