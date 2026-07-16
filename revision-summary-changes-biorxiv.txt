@@ -1,7 +1,0 @@
-1. Added the Replogle et al (2022) K562 perturbseq dataset to benchmarking results, in a new subsection (Section 3.2, Results on K562 genome-wide perturbseq), including new Figure 4 (Accuracy metrics on K562 genome-wide perturbseq);
-2. Added precision-recall curves in new Subfigures 5c, 6c, and new Appendix D (Additional precision-recall plots) containing Supplemental Figures D.1-4;
-3. Added simulations with additional noise overdispersion in new Appendix C (Effects of additional noise overdispersion);
-4. Improve readability of Methods (Section 2), most notably by moving the technical parts of Section 2.2 to a new Appendix B (Details for Simpson's Paradox correction);
-5. Updated csCLEANSER and dcCLEANSER cutoffs to 80% and 50% (respectively) to better match defaults used in the original CLEANSER paper. In most cases this does not affect conclusions, except for one notable change where dcCLEANSER supplanted crispat-NB as the top method in the 1 <= MOI <= 3 simulation scenarios.
-6. Reran pipeline allowing jobs to take up to 72h (previously we used a 24h limit). This allowed crispat-NB to complete in the low-gRNA 80k scenario, so those results were added. Due to rerunning the pipeline, the runtimes are not exactly the same as before (Figure 8), but are generally similar, with the exception of SCEPTRE as noted below.
-7. Disabled SCEPTRE parallelization which dramatically improved its runtime and memory usage. Note that SCEPTRE was still parallelized via BLAS/LAPACK, just the subprocess-forking parallelization was turned off.
