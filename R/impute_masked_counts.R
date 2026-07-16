@@ -19,8 +19,13 @@
 #'                        nrow = 3, sparse = TRUE)
 #' impute_masked_counts(counts, mask)
 #' @importFrom Matrix colSums rowSums Diagonal
-impute_masked_counts <- function(counts, mask,
-                                 eps=1e-4, max_iter=10, verbose=FALSE) {
+impute_masked_counts <- function(
+    counts,
+    mask,
+    eps = 1e-4,
+    max_iter = 10,
+    verbose = FALSE
+) {
     # HACK logical indexing fails for large matrices
     counts0 <- counts - counts * mask
     counts <- counts0
@@ -31,30 +36,37 @@ impute_masked_counts <- function(counts, mask,
     cell_sizes <- rep(1, ncol(counts))
 
     for (i in seq_len(max_iter)) {
-        guide_freqs <- sum(cell_sizes) - rowSums(mask %*% Diagonal(x=cell_sizes))
+        guide_freqs <- sum(cell_sizes) -
+            rowSums(mask %*% Diagonal(x = cell_sizes))
         guide_freqs <- rowSums(counts0) / guide_freqs
         guide_freqs[skip_row] <- 0
         guide_freqs <- guide_freqs / sum(guide_freqs)
 
-        cell_sizes <- 1 - colSums(Diagonal(x=guide_freqs) %*% mask)
+        cell_sizes <- 1 - colSums(Diagonal(x = guide_freqs) %*% mask)
         cell_sizes <- colSums(counts0) / cell_sizes
         cell_sizes[skip_col] <- 0
 
-        mask_imputed <- Diagonal(x=guide_freqs) %*% (
-            mask %*% Diagonal(x=cell_sizes))
+        mask_imputed <- Diagonal(x = guide_freqs) %*%
+            (mask %*% Diagonal(x = cell_sizes))
 
         counts <- counts0 + mask_imputed
 
         if (i > 1) {
-            max_guide_diff <- max(abs(log(guide_freqs) - log(prev_freqs)),
-                                  na.rm=TRUE)
-            max_size_diff <- max(abs(log(cell_sizes) - log(prev_sizes)),
-                                 na.rm=TRUE)
+            max_guide_diff <- max(
+                abs(log(guide_freqs) - log(prev_freqs)),
+                na.rm = TRUE
+            )
+            max_size_diff <- max(
+                abs(log(cell_sizes) - log(prev_sizes)),
+                na.rm = TRUE
+            )
 
             if (verbose) {
                 message(sprintf(
                     "Iter %d: max_guide_diff = %f, max_size_diff = %f",
-                    i, max_guide_diff, max_size_diff
+                    i,
+                    max_guide_diff,
+                    max_size_diff
                 ))
             }
 

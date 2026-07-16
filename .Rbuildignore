@@ -1,3 +1,5 @@
 ^LICENSE\.md$
 ^vignettes/.*\.html$
 ^\.claude$
+^\.lintr$
+^air\.toml$

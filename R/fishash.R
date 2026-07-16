@@ -50,12 +50,16 @@
 #' @importFrom dplyr case_when
 #' @importFrom methods as
 #' @importFrom stats p.adjust phyper
-fishash <- function(counts, padj_cutoff=.05,
-                    padj_method=c("GS", "BY", "BH"),
-                    min_count=2, min_frac=0,
-                    refit=10,
-                    exclude_empty=TRUE,
-                    background=NULL) {
+fishash <- function(
+    counts,
+    padj_cutoff = .05,
+    padj_method = c("GS", "BY", "BH"),
+    min_count = 2,
+    min_frac = 0,
+    refit = 10,
+    exclude_empty = TRUE,
+    background = NULL
+) {
     padj_method <- match.arg(padj_method)
 
     counts <- as(counts, 'CsparseMatrix')
@@ -75,13 +79,13 @@ fishash <- function(counts, padj_cutoff=.05,
         }
 
         res <- fishash_internal(
-            counts=counts,
-            padj_cutoff=padj_cutoff,
-            padj_method=padj_method,
-            min_count=min_count,
-            min_frac=min_frac,
-            background=background,
-            exclude_empty=exclude_empty
+            counts = counts,
+            padj_cutoff = padj_cutoff,
+            padj_method = padj_method,
+            min_count = min_count,
+            min_frac = min_frac,
+            background = background,
+            exclude_empty = exclude_empty
         )
 
         if (i > 3) {
@@ -113,10 +117,15 @@ fishash <- function(counts, padj_cutoff=.05,
     res
 }
 
-fishash_internal <- function(counts, padj_cutoff, padj_method,
-                             min_count, min_frac, background,
-                             exclude_empty) {
-
+fishash_internal <- function(
+    counts,
+    padj_cutoff,
+    padj_method,
+    min_count,
+    min_frac,
+    background,
+    exclude_empty
+) {
     tot <- sum(counts)
 
     col_sums <- colSums(counts)
@@ -132,14 +141,14 @@ fishash_internal <- function(counts, padj_cutoff, padj_method,
     n_entries <- as.numeric(n_rows) * as.numeric(n_cols)
 
     counts <- as(counts, 'CsparseMatrix')
-    fracs <- counts %*% Diagonal(x=1/pmax(colSums(counts), 1))
+    fracs <- counts %*% Diagonal(x = 1 / pmax(colSums(counts), 1))
 
     counts <- as(counts, 'TsparseMatrix')
 
     df <- data.frame(
-        count=counts@x,
-        row_idx=counts@i+1,
-        col_idx=counts@j+1
+        count = counts@x,
+        row_idx = counts@i + 1,
+        col_idx = counts@j + 1
     )
 
     col_sums_bg <- colSums(background)
@@ -150,62 +159,68 @@ fishash_internal <- function(counts, padj_cutoff, padj_method,
 
     #df$row_sum <- row_sums[df$row_idx]
     df$row_sum <- (row_sums_bg[df$row_idx] -
-                       background[cbind(df$row_idx, df$col_idx)] +
-                       df$count)
+        background[cbind(df$row_idx, df$col_idx)] +
+        df$count)
     df$tot <- tot_bg - col_sums_bg[df$col_idx] + col_sums[df$col_idx]
 
     df$log_pval <- phyper(
         df$count - 1,
         df$row_sum,
-        df$tot-df$row_sum,
+        df$tot - df$row_sum,
         df$col_sum,
-        lower.tail=FALSE,
-        log.p=TRUE
+        lower.tail = FALSE,
+        log.p = TRUE
     )
 
-    df$odds_ratio <- (
-        df$count * (df$tot - df$row_sum - df$col_sum + df$count) /
-            (df$row_sum - df$count) / (df$col_sum - df$count)
-    )
+    df$odds_ratio <- (df$count *
+        (df$tot - df$row_sum - df$col_sum + df$count) /
+        (df$row_sum - df$count) /
+        (df$col_sum - df$count))
 
-    df$odds_ratio_regularized <- (
-        df$count * (df$tot - df$row_sum - df$col_sum + df$count) /
-            (df$row_sum - df$count + 1) / (df$col_sum - df$count + 1)
-    )
+    df$odds_ratio_regularized <- (df$count *
+        (df$tot - df$row_sum - df$col_sum + df$count) /
+        (df$row_sum - df$count + 1) /
+        (df$col_sum - df$count + 1))
 
     mat_logpval <- sparseMatrix(
-        i=df$row_idx, j=df$col_idx,
-        x=df$log_pval, dims=dim(counts), dimnames=dimnames(counts),
-        index1=TRUE
+        i = df$row_idx,
+        j = df$col_idx,
+        x = df$log_pval,
+        dims = dim(counts),
+        dimnames = dimnames(counts),
+        index1 = TRUE
     )
 
     if (padj_method == "BY") {
-        cm <- log(n_entries) + 1/(2*n_entries) + .57721
+        cm <- log(n_entries) + 1 / (2 * n_entries) + .57721
     } else {
         cm <- 1
     }
 
     if (padj_method %in% c("BH", "BY")) {
-        df <- df[order(df$log_pval),]
+        df <- df[order(df$log_pval), ]
         df$rank <- seq_len(nrow(df))
 
         df$padj <- pmin(n_entries * cm * exp(df$log_pval) / df$rank, 1)
 
-        df <- df[nrow(df):1,]
+        df <- df[nrow(df):1, ]
         df$padj <- cummin(df$padj)
 
         n_signif <- sum(df$padj <= padj_cutoff)
 
-        logpval_cutoff <- (
-            log(padj_cutoff) - log(cm) - log(n_entries) + log(n_signif)
-        )
+        logpval_cutoff <- (log(padj_cutoff) -
+            log(cm) -
+            log(n_entries) +
+            log(n_signif))
 
         stopifnot(sum(df$log_pval <= logpval_cutoff) == n_signif)
     } else if (padj_method == "GS") {
         colmin_logpval <- colMins(mat_logpval)
 
-        block_padj <- p.adjust(pmin(exp(colmin_logpval) * n_rows, 1),
-                               method='BH')
+        block_padj <- p.adjust(
+            pmin(exp(colmin_logpval) * n_rows, 1),
+            method = 'BH'
+        )
 
         B <- sum(block_padj <= padj_cutoff)
 
@@ -241,27 +256,37 @@ fishash_internal <- function(counts, padj_cutoff, padj_method,
         assign_map <- tapply(
             rownames(counts)[df_assigned$row_idx],
             df_assigned$col_idx,
-            paste, collapse=','
+            paste,
+            collapse = ','
         )
         assignment[as.integer(names(assign_map))] <- assign_map
     }
 
     SummarizedExperiment(
-        assays=list(assigned=mat_assigned, log_pval=mat_logpval,
-                    odds_ratio= sparseMatrix(
-                        i=df$row_idx, j=df$col_idx,
-                        x=df$odds_ratio, dims=dim(counts),
-                        dimnames=dimnames(counts),
-                        index1=TRUE),
-                    odds_ratio_regularized= sparseMatrix(
-                        i=df$row_idx, j=df$col_idx,
-                        x=df$odds_ratio_regularized,
-                        dims=dim(counts), dimnames=dimnames(counts),
-                        index1=TRUE)),
-        colData=data.frame(
+        assays = list(
+            assigned = mat_assigned,
+            log_pval = mat_logpval,
+            odds_ratio = sparseMatrix(
+                i = df$row_idx,
+                j = df$col_idx,
+                x = df$odds_ratio,
+                dims = dim(counts),
+                dimnames = dimnames(counts),
+                index1 = TRUE
+            ),
+            odds_ratio_regularized = sparseMatrix(
+                i = df$row_idx,
+                j = df$col_idx,
+                x = df$odds_ratio_regularized,
+                dims = dim(counts),
+                dimnames = dimnames(counts),
+                index1 = TRUE
+            )
+        ),
+        colData = data.frame(
             demux_type = demux_type,
             assignment = assignment
         ),
-        metadata=list(log_pval_cutoff=logpval_cutoff)
+        metadata = list(log_pval_cutoff = logpval_cutoff)
     )
 }
