@@ -67,6 +67,7 @@ assay is EXPERIMENTAL and subject to change.
 Cell hashing by one-sided Fisher test
 }
 \examples{
-data(crispat_schraivogel)
-result <- fishash(crispat_schraivogel[seq_len(10), seq_len(200)])
+data(tapseq_diffex)
+library(SingleCellExperiment)
+result <- fishash(counts(altExp(tapseq_diffex)))
 }

@@ -1,10 +1,12 @@
 library(fishash)
 
-data(crispat_schraivogel)
+library(SingleCellExperiment)
 
-res_fishash <- fishash(crispat_schraivogel)
+data(tapseq_diffex)
+
+res_fishash <- fishash(counts(altExp(tapseq_diffex)))
 
 saveRDS(
-  res_fishash,
-  'tests/testthat/fixtures/fishash_schraivogel.rds'
+    res_fishash,
+    'tests/testthat/fixtures/fishash_schraivogel.rds'
 )

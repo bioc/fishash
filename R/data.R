@@ -1,12 +1,10 @@
-#' Schraivogel dataset bundled with crispat
+#' TAPseq benchmark dataset (Schraivogel et al 2020)
 #'
-#' Copy of the Schraivogel et al 2020 CRISPRi dataset bundled with the
-#' Python crispat package.
+#' TAPseq ("Targeted Perturbseq") dataset for benchmarking
+#' differential expression (Schraivogel et al 2020).
 #'
-#' @format ## `crispat_schraivogel`
-#' A sparse matrix of UMI counts with 86 rows (gRNAs) and 21977 columns (cells).
-#' @source <https://github.com/velten-group/crispat>
-#' @examples
-#' data(crispat_schraivogel)
-#' crispat_schraivogel[seq_len(5), seq_len(5)]
-"crispat_schraivogel"
+#' @format ## `tapseq_diffex`
+#' A SingleCellExperiment with 72 rows and 21977 columns.
+#' @source <https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE135497>,
+#'     <https://github.com/velten-group/crispat>
+"tapseq_diffex"

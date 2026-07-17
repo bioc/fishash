@@ -41,9 +41,9 @@
 #'
 #' @export
 #' @examples
-#' data(crispat_schraivogel)
-#' result <- fishash(crispat_schraivogel[seq_len(10), seq_len(200)])
-#' @importFrom SummarizedExperiment SummarizedExperiment assay
+#' data(tapseq_diffex)
+#' library(SingleCellExperiment)
+#' result <- fishash(counts(altExp(tapseq_diffex)))
 #' @importFrom S4Vectors metadata `metadata<-`
 #' @importFrom Matrix colSums rowSums Diagonal sparseMatrix
 #' @importFrom sparseMatrixStats colMins
