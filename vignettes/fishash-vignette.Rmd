@@ -1,54 +1,149 @@
 ---
-title: "Fishash vignette"
-output: BiocStyle::html_document
+title: Using fishash to assign gRNAs in Perturbseq data
+author: Jack Kamm
+date: "Revised: 2026-07-18"
+output:
+  BiocStyle::html_document
+package: fishash
+bibliography: ref.bib
 vignette: >
-  %\VignetteIndexEntry{Fishash vignette}
+  %\VignetteIndexEntry{Using fishash to assign gRNAs in Perturbseq data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup-opts, include = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
+    collapse = TRUE,
+    comment = "#>"
 )
 ```
 
-We illustrate fishash on the [Schraivogel et al
-2020](https://www.nature.com/articles/s41592-020-0837-5) CRISPRi
-dataset which is also bundled with the [Python crispat
-package](https://github.com/velten-group/crispat).
+# Introduction
+
+Fishash is a package for assigning guides to cells in Perturbseq
+experiments, which combine single-cell RNAseq with CRISPR
+perturbations.  During preprocessing, we must determine the
+presence/absence of guides in each cell based on the CRISPR gRNA UMI
+counts.  Fishash does this using a modified version of Fisher's test.
+
+Other packages for performing perturbseq guide assignment include:
+
+- R packages
+  - `r Githubpkg("katsevich-lab/sceptre")`
+- Python packages
+  - [geomux](https://github.com/noamteyssier/geomux)
+  - [crispat](https://github.com/velten-group/crispat)
+  - [demuxEM](https://github.com/lilab-bcb/demuxEM)
+- Command line tools
+  - [CLEANSER](https://github.com/Gersbachlab-Bioinformatics/CLEANSER)
+  
+We compare fishash with the methods above in our preprint
+[@kamm2026fishash].  We find fishash to be particularly well suited
+for large perturbseq datasets (e.g. genome-wide perturbation screens)
+in terms of accuracy, runtime, and memory usage.
+
+# Example TAPseq dataset
 
 ```{r load-packages, message = FALSE}
-library(magrittr)
-library(fishash)
-library(ggplot2)
-library(dplyr)
-library(SummarizedExperiment)
 library(Matrix)
+library(SummarizedExperiment)
+library(SingleCellExperiment)
+
+library(magrittr)
+library(dplyr)
+library(tidyr)
+library(tibble)
+
+library(ggplot2)
+
+library(fishash)
 ```
 
-Loading the data and printing out the first few entries, we can see it
-is a sparse count matrix:
+We illustrate fishash on a TAPseq dataset [@schraivogel2020targeted]
+dataset which is also bundled with the
+[crispat](https://github.com/velten-group/crispat) package for gRNA
+assignment.
 
-```{r load-data}
-data(crispat_schraivogel)
-crispat_schraivogel[1:10,1:10]
+The data consists of ~22,000 K562 cells from 2 samples with gene
+expression for 72 genes and CRISPRi perturbations consisting of 86
+gRNAs.  The data is represented as a `SingleCellExperiment`.
+
+```{r load-data, cache=TRUE}
+data(tapseq_diffex)
+tapseq_diffex
 ```
 
-We pass this matrix to the `fishash()` function to call
-presence/absence at 5% FDR:
+Note that TAPseq ("Targeted Perturbseq") amplifies transcripts from a
+panel of genes (in this case, 72 genes, mostly on chromosome 8)
+instead of sequencing the whole transcriptome.
+
+The gRNA assay is stored in the `altExp()`:
+
+```{r print-altexp}
+altExp(tapseq_diffex)
+```
+
+The CRISPRi perturbations target promoters of 10 genes and enhancers
+of 4 genes. Each gene target has 4 guides targetting its promoter or
+enhancers.  Additionally, there are 30 non-targeting control (NTC)
+guides.
+
+```{r table-grna}
+rowData(altExp(tapseq_diffex)) %>%
+    as.data.frame() %>%
+    group_by(target_gene, target_element_type) %>%
+    summarize(n_guides = n(), .groups = "drop") %>%
+    arrange(target_element_type)
+```
+
+# Visualizing the guide counts
+
+Before assigning the guides, it is good to visualize the count matrix.
+
+One useful plot, originally proposed by the
+[pertpy](https://pertpy.readthedocs.io/en/stable/tutorials/notebooks/guide_rna_assignment.html)
+project,
+is to represent the counts as a heatmap, with the cells sorted by
+their top guide, creating a band near the diagonal:
+
+```{r diag-heatmap, fig.width=9, fig.height=8, fig.wide=TRUE}
+set.seed(12345)
+diagonal_heatmap(counts(altExp(tapseq_diffex)), subsample_cells = 200)
+```
+
+Another useful plot is the histogram of the nonzero counts.  We plot
+the histogram together with a weighted version of the histogram, which
+rescales the y-axis to represent UMIs instead of the number of matrix
+entries:
+
+```{r weighted-hist, fig.width=7, fig.height=7}
+nonzero_histogram_with_weighted(counts(altExp(tapseq_diffex)))
+```
+
+The top histogram represents the distribution for the number of UMIs
+if we sampled a random nonzero matrix entry, whereas the bottom
+histogram represents the distribution if we sampled a random UMI and
+asked how many UMIs are in the same entry. If we think of the left
+mode as "noise" and the right mode as "signal", the areas in the
+weighted histogram provide a visual estimate of the signal-to-noise
+ratio in the gRNA counts.
+
+# Guide assignment
+
+Next, we call `fishash()` to assign the guides:
 
 ```{r run-fishash}
-res_fishash <- fishash(crispat_schraivogel, padj_cutoff = .05)
+res_fishash <- fishash(counts(altExp(tapseq_diffex)), padj_cutoff = .05)
 res_fishash
 ```
 
 The return value is a SummarizedExperiment. The `assigned` assay is a
-sparse boolean matrix indicating whether we call the guide present:
+sparse boolean matrix indicating whether we call the guide present
+(`|` means `TRUE` while `.` means `FALSE`):
 
 ```{r show-assigned}
-assay(res_fishash, 'assigned')[1:10, 1:10]
+assay(res_fishash, "assigned")[1:10, 1:10]
 ```
 
 The colData shows the classification of each cell; the `demux_type`
@@ -60,11 +155,34 @@ containing the guides called:
 colData(res_fishash)
 ```
 
+We inspect the number of cells with 0 guides (unassigned), 1 guide (singlet),
+or 2+ guides (doublet):
+
+```{r bar-demux-type, fig.small=TRUE}
+colData(res_fishash) %>%
+    as.data.frame() %>%
+    ggplot(aes(x = demux_type)) +
+    geom_bar() +
+    theme_bw(base_size = 16)
+```
+
+Alternatively, we can plot a histogram of the number of assigned
+guides per cell by using the `colSums` of the assigned assay:
+
+```{r hist-n-assigned}
+data.frame(
+    n_assigned = colSums(assay(res_fishash, "assigned"))
+) %>%
+    ggplot(aes(x = n_assigned)) +
+    geom_histogram() +
+    theme_bw(base_size = 16)
+```
+
 We can also inspect the log p-values from the Fisher test. Since we
 use a one-sided test, this matrix is also sparse:
 
 ```{r show-logpval}
-assay(res_fishash, 'log_pval')[1:10, 1:10]
+assay(res_fishash, "log_pval")[1:10, 1:10]
 ```
 
 Finally, the metadata shows the p-value cutoff selected by the FDR procedure:
@@ -73,28 +191,196 @@ Finally, the metadata shows the p-value cutoff selected by the FDR procedure:
 metadata(res_fishash)
 ```
 
-Below, we plot the nonzero log p-values together with the FDR cutoff,
-coloring by the number of counts in the entry:
+We can inspect the classifier decision rule by plotting the test
+statistic (the negative log p-value).  Ideally its histogram will look
+bimodal, as it does below.  We also plot the test statistic against
+the UMI count to understand how they correspond; we see that guides
+with 2 counts are usually not assigned, and guides with 10+ counts
+are nearly always assigned.
 
-```{r plot-pvalues, fig.height=8, fig.width=8}
-crispat_schraivogel %>%
-  as('TsparseMatrix') %>%
-  {data.frame(
-    count=.@x,
-    row_idx=.@i+1,
-    col_idx=.@j+1
-  )} %>%
-  mutate(log_pval=assay(res_fishash, 'log_pval')[cbind(row_idx, col_idx)]) %>%
-  mutate(log_pval_trunc=pmax(log_pval, -20)) %>%
-  mutate(count=cut(count, c(0, 1, 2, 3, 5, 10, 30, 50, 100, Inf))) %>%
-  ggplot(aes(x=-log_pval, fill=count)) +
-  geom_histogram(bins=100) +
-  geom_vline(xintercept=-metadata(res_fishash)$log_pval_cutoff, lty='dashed') +
-  scale_x_continuous(trans='log1p', breaks=c(0,1,3,10,30,100,300,1000)) +
-  scale_fill_viridis_d() +
-  theme_classic(base_size=16) +
-  theme(legend.position='bottom')
+```{r xy-pvalues-cnt}
+library(ggExtra)
+
+nz <- counts(altExp(tapseq_diffex)) > 0
+
+data.frame(
+    count = counts(altExp(tapseq_diffex))[nz],
+    log_pval = assay(res_fishash, "log_pval")[nz],
+    assigned = assay(res_fishash, "assigned")[nz]
+) %>%
+    ggplot(aes(x = -log_pval, y = count, color = assigned)) +
+    geom_point(
+        shape = 1, alpha = .5,
+        position = position_jitter(width = 0, height = .02)
+    ) +
+    geom_vline(
+        xintercept = -metadata(res_fishash)$log_pval_cutoff,
+        lty = "dotted"
+    ) +
+    scale_x_continuous(trans = "log1p", breaks = c(0, 10^(0:6))) +
+    scale_y_log10() +
+    theme_bw(base_size = 16) +
+    theme(legend.position = "left") ->
+p
+ggMarginal(p,
+    type = "hist", groupFill = TRUE,
+    xparams = list(bins = 50),
+    yparams = list(bins = 50)
+)
 ```
+
+# Downstream analysis
+
+Finally, we briefly illustrate how the gRNA assignments may be used
+in downstream analyses such as differential expression.
+
+First, we subset to cells with a single guide detected.
+
+```{r subset-singlet, cache=TRUE}
+# Add fishash results to the SingleCellExperiment
+colData(tapseq_diffex) <- cbind(colData(tapseq_diffex), colData(res_fishash))
+assay(altExp(tapseq_diffex), "assigned") <- assay(res_fishash, "assigned")
+
+# Subset to cells with a single guide
+singlets <- tapseq_diffex[, colData(tapseq_diffex)$demux_type == "singlet"]
+
+# Annotate the assigned target gene
+colData(singlets)$target_gene <- rowData(altExp(singlets))[
+    colData(singlets)$assignment, "target_gene"
+]
+```
+
+Next, we use `r Biocpkg("glmGamPoi")` to perform negative binomial
+regression of the cells from each guide against the NTC cells,
+controlling for the sample. For the NTC guides, we compare them
+against the other NTC guides (in leave-one-out fashion).  For the cell
+size factors, we use the geometric mean (CLR normalization) due to the
+compositional nature of the data and low number of features (72
+genes).
+
+```{r run-glmgp, cache=TRUE}
+library(glmGamPoi)
+library(BiocParallel)
+BPPARAM <- MulticoreParam(2)
+
+res_glmgp <- bplapply(
+    unique(colData(singlets)$assignment),
+    function(g) {
+        keep <- with(colData(singlets), target_gene == "NTC" | assignment == g)
+        sce_sub <- singlets[, keep]
+
+        colData(sce_sub)$prtrb <- colData(sce_sub)$assignment == g
+
+        fit <- glm_gp(
+            counts(sce_sub),
+            design = ~ sample + prtrb,
+            col_data = colData(sce_sub),
+            size_factors = exp(colMeans(log1p(counts(sce_sub)))),
+            overdispersion_shrinkage = FALSE
+        )
+
+        res <- test_de(
+            fit,
+            contrast = "prtrbTRUE",
+            compute_lfc_se = TRUE,
+            max_lfc = Inf
+        )
+        res$grna <- g
+
+        res
+    },
+    BPPARAM = BPPARAM
+)
+
+res_glmgp <- do.call(rbind, res_glmgp)
+
+# recompute adjusted p-values over all tests
+res_glmgp$adj_pval <- p.adjust(res_glmgp$pval, method = "BH")
+```
+
+We then plot a heatmap of the shrunken log-fold changes 
+(computed with `r CRANpkg("ebnm")`)
+overlaid with the significant genes at FDR 5%.
+
+```{r de-heatmap, fig.height=15, fig.width=15, fig.wide=TRUE}
+library(ebnm)
+library(ComplexHeatmap)
+
+# compute shrunken log fold changes
+
+res_glmgp$lfc_shrunk <- ebnm(
+    res_glmgp$lfc,
+    res_glmgp$lfc_se,
+    prior_family = "ash"
+)$posterior$mean
+
+# unmelt long dataframe of results into wide matrices
+res_glmgp %>%
+    select(name, grna, lfc_shrunk) %>%
+    pivot_wider(names_from = "grna", values_from = "lfc_shrunk") %>%
+    column_to_rownames("name") %>%
+    as.matrix() %>%
+    .[sort(rownames(.)), sort(colnames(.))] ->
+mat_lfc_shrunk
+
+res_glmgp %>%
+    select(name, grna, adj_pval) %>%
+    pivot_wider(names_from = "grna", values_from = "adj_pval") %>%
+    column_to_rownames("name") %>%
+    as.matrix() %>%
+    .[rownames(mat_lfc_shrunk), colnames(mat_lfc_shrunk)] ->
+mat_padj
+
+# annotation of significant p-values
+mat_star <- matrix("",
+    nrow = nrow(mat_padj), ncol = ncol(mat_padj),
+    dimnames = dimnames(mat_padj)
+)
+mat_star[mat_padj <= .05] <- "x"
+
+Heatmap(
+    t(mat_lfc_shrunk),
+    right_annotation = rowAnnotation(
+        df = rowData(altExp(tapseq_diffex))[
+            colnames(mat_lfc_shrunk),
+            "target_element_type",
+            drop = FALSE
+        ],
+        col = list(target_element_type = setNames(
+            palette()[1:3],
+            c("NTC", "enhancer", "promoter")
+        ))
+    ),
+    layer_fun = function(j, i, x, y, w, h, col) {
+        grid.text(
+            t(mat_star)[cbind(i, j)], x, y,
+            gp = gpar(fontsize = 12, fontface = "bold")
+        )
+    },
+    cluster_rows = FALSE, cluster_columns = FALSE,
+    heatmap_legend_param = list(title = "shrunkLogFC")
+)
+```
+
+Overall the results look reasonable, with similar differential
+expression results between the guides for the same target, and in
+particular with the target gene usually being knocked down (e.g. CPQ guides
+have negative logFC for CPQ gene expression).  Also, the NTC guides usually
+have no DEGs, with some exceptions (such as NTC-22) which may be worth
+investigating as outliers. There may also be other outlier guides to
+exclude -- for example, the fourth PHF20L1 guide has different DEGs
+from the other PHF20L1 guides and in particular fails to knockdown the
+PHF20L1 gene.
+
+The differential expression results could possibly be improved with QC
+filtering of cells, controlling for confounders (such as cell state),
+better normalization, better dispersion estimates, or more generally
+investigating sources of model misspecification -- a more detailed
+analysis is beyond the scope of this vignette.
+
+# References {.unnumbered}
+
+# Session info
 
 ```{r session-info}
 sessionInfo()

@@ -44,8 +44,9 @@
 #' data(tapseq_diffex)
 #' library(SingleCellExperiment)
 #' result <- fishash(counts(altExp(tapseq_diffex)))
+#' @importFrom SummarizedExperiment SummarizedExperiment assay `assay<-`
 #' @importFrom S4Vectors metadata `metadata<-`
-#' @importFrom Matrix colSums rowSums Diagonal sparseMatrix
+#' @importFrom Matrix colSums rowSums Diagonal sparseMatrix drop0
 #' @importFrom sparseMatrixStats colMins
 #' @importFrom dplyr case_when
 #' @importFrom methods as
@@ -113,6 +114,8 @@ fishash <- function(
         prev <- assay(res, 'assigned')
     }
     metadata(res)$num_iter <- i
+
+    assay(res, 'assigned') <- drop0(assay(res, 'assigned'))
 
     res
 }

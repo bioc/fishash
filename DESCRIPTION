@@ -13,13 +13,17 @@ Description: Assigns guide RNAs or other genetic perturbations to cells in
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
+RoxygenNote: 8.0.0
 biocViews: SingleCell, Sequencing, Preprocessing, StatisticalMethod
 Imports:
     dplyr,
     extraDistr,
+    ggplot2,
     Matrix,
     methods,
+    nnet,
+    patchwork,
+    rlang,
     S4Vectors,
     SummarizedExperiment,
     sparseMatrixStats
@@ -27,11 +31,19 @@ Depends:
     R (>= 4.5.0)
 LazyData: false
 Suggests:
+    BiocParallel,
     BiocStyle,
-    ggplot2,
+    ComplexHeatmap,
+    ebnm,
+    ggExtra,
+    glmGamPoi,
+    grid,
     knitr,
     magrittr,
     rmarkdown,
+    tidyr,
+    tibble,
+    SingleCellExperiment,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
