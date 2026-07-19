@@ -43,6 +43,16 @@ We compare fishash with the methods above in our preprint
 for large perturbseq datasets (e.g. genome-wide perturbation screens)
 in terms of accuracy, runtime, and memory usage.
 
+# Installation
+
+```{r install, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+}
+
+BiocManager::install("fishash")
+```
+
 # Example TAPseq dataset
 
 ```{r load-packages, message = FALSE}
