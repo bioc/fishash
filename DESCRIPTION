@@ -1,6 +1,6 @@
 Package: fishash
 Title: Cell Hashing with One-Sided Fisher Test
-Version: 0.99.0
+Version: 0.99.1
 Authors@R:
     person("Jack", "Kamm", , "jackkamm@gmail.com", role = c("aut", "cre"))
 Description: Assigns guide RNAs or other genetic perturbations to cells in
