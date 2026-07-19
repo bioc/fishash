@@ -25,6 +25,7 @@ Imports:
     patchwork,
     rlang,
     S4Vectors,
+    SingleCellExperiment,
     SummarizedExperiment,
     sparseMatrixStats
 Depends:
@@ -43,7 +44,6 @@ Suggests:
     rmarkdown,
     tidyr,
     tibble,
-    SingleCellExperiment,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr

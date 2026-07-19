@@ -7,4 +7,5 @@
 #' A SingleCellExperiment with 72 rows and 21977 columns.
 #' @source <https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE135497>,
 #'     <https://github.com/velten-group/crispat>
+#' @importClassesFrom SingleCellExperiment SingleCellExperiment
 "tapseq_diffex"
