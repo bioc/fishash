@@ -37,7 +37,7 @@ Other packages for performing perturbseq guide assignment include:
   - [demuxEM](https://github.com/lilab-bcb/demuxEM)
 - Command line tools
   - [CLEANSER](https://github.com/Gersbachlab-Bioinformatics/CLEANSER)
-  
+
 We compare fishash with the methods above in our preprint
 [@kamm2026fishash].  We find fishash to be particularly well suited
 for large perturbseq datasets (e.g. genome-wide perturbation screens)
@@ -70,25 +70,28 @@ library(ggplot2)
 library(fishash)
 ```
 
-We illustrate fishash on a TAPseq dataset [@schraivogel2020targeted]
-dataset which is also bundled with the
+We illustrate fishash on a Targeted Perturbseq ("TAPseq") dataset
+[@schraivogel2020targeted] dataset which is also bundled with the
 [crispat](https://github.com/velten-group/crispat) package for gRNA
 assignment.
 
 The data consists of ~22,000 K562 cells from 2 samples with gene
-expression for 72 genes and CRISPRi perturbations consisting of 86
-gRNAs.  The data is represented as a `SingleCellExperiment`.
+expression for 72 genes (mostly on chromosome 8) and CRISPRi
+perturbations consisting of 86 gRNAs. Note that TAPseq amplifies
+transcripts from a panel of genes instead of sequencing the whole
+transcriptome.
+
+We represent the data as a `SingleCellExperiment`, with the
+main experiment containing the gene expression sequencing counts.
 
 ```{r load-data, cache=TRUE}
 data(tapseq_diffex)
 tapseq_diffex
 ```
 
-Note that TAPseq ("Targeted Perturbseq") amplifies transcripts from a
-panel of genes (in this case, 72 genes, mostly on chromosome 8)
-instead of sequencing the whole transcriptome.
-
-The gRNA assay is stored in the `altExp()`:
+The SingleCellExperiment object also contains an alternative
+experiment with the sequencing counts of the gRNA barcodes,
+which we will use to call presence/absence of the gRNAs:
 
 ```{r print-altexp}
 altExp(tapseq_diffex)
@@ -141,7 +144,7 @@ ratio in the gRNA counts.
 
 # Guide assignment
 
-Next, we call `fishash()` to assign the guides:
+Next, we call `fishash()` to call presence/absence of the guides in each cell, based on the sequencing counts of the gRNA barcodes. Internally, for each (cell, gRNA) pair the function constructs a 2x2 table for the UMI counts, and then uses a one-sided Fisher's test to call presence/absence of the guide, depending on whether there is significant association of the cell and guide barcodes.
 
 ```{r run-fishash}
 res_fishash <- fishash(counts(altExp(tapseq_diffex)), padj_cutoff = .05)
@@ -156,10 +159,11 @@ sparse boolean matrix indicating whether we call the guide present
 assay(res_fishash, "assigned")[1:10, 1:10]
 ```
 
-The colData shows the classification of each cell; the `demux_type`
-column indicates whether the cell contained 0, 1, or 2+ assigned
-guides, while the `assignment` column is a comma-delimited string
-containing the guides called:
+The colData shows the classification of each cell; the `assignment`
+column is a comma-delimited string containing the guides called, while
+the `demux_type` column indicates whether the cell contained 0, 1, or
+2+ assigned guides (only the cells with a single guide will be kept
+for downstream analysis):
 
 ```{r show-coldata}
 colData(res_fishash)
@@ -177,7 +181,7 @@ colData(res_fishash) %>%
 ```
 
 Alternatively, we can plot a histogram of the number of assigned
-guides per cell by using the `colSums` of the assigned assay:
+guides per cell by using the column sums of the assignment matrix:
 
 ```{r hist-n-assigned}
 data.frame(
@@ -195,7 +199,7 @@ use a one-sided test, this matrix is also sparse:
 assay(res_fishash, "log_pval")[1:10, 1:10]
 ```
 
-Finally, the metadata shows the p-value cutoff selected by the FDR procedure:
+The metadata shows the p-value cutoff selected by the FDR procedure:
 
 ```{r show-metadata}
 metadata(res_fishash)
@@ -254,16 +258,16 @@ assay(altExp(tapseq_diffex), "assigned") <- assay(res_fishash, "assigned")
 # Subset to cells with a single guide
 singlets <- tapseq_diffex[, colData(tapseq_diffex)$demux_type == "singlet"]
 
-# Annotate the assigned target gene
+# Annotate cells with the perturbed gene
 colData(singlets)$target_gene <- rowData(altExp(singlets))[
     colData(singlets)$assignment, "target_gene"
 ]
 ```
 
-Next, we use `r Biocpkg("glmGamPoi")` to perform negative binomial
-regression of the cells from each guide against the NTC cells,
+Next, we use `r Biocpkg("glmGamPoi")` to perform differential
+expression of the cells from each guide against the NTC cells,
 controlling for the sample. For the NTC guides, we compare them
-against the other NTC guides (in leave-one-out fashion).  For the cell
+against the other NTC guides in leave-one-out fashion.  For the cell
 size factors, we use the geometric mean (CLR normalization) due to the
 compositional nature of the data and low number of features (72
 genes).
@@ -374,19 +378,22 @@ Heatmap(
 
 Overall the results look reasonable, with similar differential
 expression results between the guides for the same target, and in
-particular with the target gene usually being knocked down (e.g. CPQ guides
-have negative logFC for CPQ gene expression).  Also, the NTC guides usually
-have no DEGs, with some exceptions (such as NTC-22) which may be worth
-investigating as outliers. There may also be other outlier guides to
-exclude -- for example, the fourth PHF20L1 guide has different DEGs
-from the other PHF20L1 guides and in particular fails to knockdown the
-PHF20L1 gene.
+particular with the target gene usually being knocked down (e.g. CPQ
+guides have negative logFC for CPQ gene expression).  Some guides
+should be investigated as outliers -- for example, the fourth PHF20L1
+guide has different DEGs from the other PHF20L1 guides and in
+particular fails to knockdown the PHF20L1 gene.
 
-The differential expression results could possibly be improved with QC
-filtering of cells, controlling for confounders (such as cell state),
-better normalization, better dispersion estimates, or more generally
-investigating sources of model misspecification -- a more detailed
-analysis is beyond the scope of this vignette.
+The number of DEGs among the NTCs can also give a rough idea of the
+empirical false positive rate or miscalibration of the results. Overall,
+most NTC guides have no DEGs, with some exceptions (such as NTC-22)
+which may be worth investigating as outliers.
+
+Beyond the scope of this vignette, a more detailed investigation could
+potentially improve the calibration or power of the analysis, such as
+by QC filtering of cells, by controlling for confounders (such as cell
+state), or by improving estimates of the cell size factors or gene
+overdispersions.
 
 # References {.unnumbered}
 
