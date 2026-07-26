@@ -1,6 +1,6 @@
 Package: fishash
 Title: Cell Hashing with One-Sided Fisher Test
-Version: 0.99.2
+Version: 0.99.3
 Authors@R:
     person("Jack", "Kamm", , "jackkamm@gmail.com", role = c("aut", "cre"))
 Description: Assigns guide RNAs or other genetic perturbations to cells in
@@ -32,7 +32,6 @@ Depends:
     R (>= 4.5.0)
 LazyData: false
 Suggests:
-    BiocParallel,
     BiocStyle,
     ComplexHeatmap,
     ggExtra,
