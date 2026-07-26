@@ -1,7 +1,7 @@
 ---
 title: Using fishash to assign gRNAs in Perturbseq data
 author: Jack Kamm
-date: "Revised: 2026-07-18"
+date: "Revised: 2026-07-25"
 output:
   BiocStyle::html_document
 package: fishash
@@ -60,12 +60,8 @@ library(Matrix)
 library(SummarizedExperiment)
 library(SingleCellExperiment)
 
-library(magrittr)
-library(dplyr)
-library(tidyr)
-library(tibble)
-
 library(ggplot2)
+library(dplyr)
 
 library(fishash)
 ```
@@ -98,15 +94,15 @@ altExp(tapseq_diffex)
 ```
 
 The CRISPRi perturbations target promoters of 10 genes and enhancers
-of 4 genes. Each gene target has 4 guides targetting its promoter or
+of 4 genes. Each gene target has 4 guides targeting its promoter or
 enhancers.  Additionally, there are 30 non-targeting control (NTC)
 guides.
 
 ```{r table-grna}
-rowData(altExp(tapseq_diffex)) %>%
-    as.data.frame() %>%
-    group_by(target_gene, target_element_type) %>%
-    summarize(n_guides = n(), .groups = "drop") %>%
+rowData(altExp(tapseq_diffex)) |>
+    as.data.frame() |>
+    group_by(target_gene, target_element_type) |>
+    summarize(n_guides = n(), .groups = "drop") |>
     arrange(target_element_type)
 ```
 
@@ -173,8 +169,8 @@ We inspect the number of cells with 0 guides (unassigned), 1 guide (singlet),
 or 2+ guides (doublet):
 
 ```{r bar-demux-type, fig.small=TRUE}
-colData(res_fishash) %>%
-    as.data.frame() %>%
+colData(res_fishash) |>
+    as.data.frame() |>
     ggplot(aes(x = demux_type)) +
     geom_bar() +
     theme_bw(base_size = 16)
@@ -186,7 +182,7 @@ guides per cell by using the column sums of the assignment matrix:
 ```{r hist-n-assigned}
 data.frame(
     n_assigned = colSums(assay(res_fishash, "assigned"))
-) %>%
+) |>
     ggplot(aes(x = n_assigned)) +
     geom_histogram() +
     theme_bw(base_size = 16)
@@ -213,15 +209,13 @@ with 2 counts are usually not assigned, and guides with 10+ counts
 are nearly always assigned.
 
 ```{r xy-pvalues-cnt}
-library(ggExtra)
-
 nz <- counts(altExp(tapseq_diffex)) > 0
 
 data.frame(
     count = counts(altExp(tapseq_diffex))[nz],
     log_pval = assay(res_fishash, "log_pval")[nz],
     assigned = assay(res_fishash, "assigned")[nz]
-) %>%
+) |>
     ggplot(aes(x = -log_pval, y = count, color = assigned)) +
     geom_point(
         shape = 1, alpha = .5,
@@ -236,11 +230,18 @@ data.frame(
     theme_bw(base_size = 16) +
     theme(legend.position = "left") ->
 p
-ggMarginal(p,
-    type = "hist", groupFill = TRUE,
-    xparams = list(bins = 50),
-    yparams = list(bins = 50)
-)
+
+if (require(ggExtra)) {
+    p <- ggMarginal(
+        p,
+        type = "hist",
+        groupFill = TRUE,
+        xparams = list(bins = 50),
+        yparams = list(bins = 50)
+    )
+}
+
+p
 ```
 
 # Downstream analysis
@@ -270,130 +271,101 @@ controlling for the sample. For the NTC guides, we compare them
 against the other NTC guides in leave-one-out fashion.  For the cell
 size factors, we use the geometric mean (CLR normalization) due to the
 compositional nature of the data and low number of features (72
-genes).
+genes). We also shrink the log-fold-changes with a small ridge penalty
+equivalent to a Normal prior with variance 1.
 
 ```{r run-glmgp, cache=TRUE}
-library(glmGamPoi)
-library(BiocParallel)
-BPPARAM <- MulticoreParam(2)
+if (require(glmGamPoi)) {
+    # Run differential expression in a loop over guides
+    lfc_prior_sd <- 1
+    de_list <- lapply(
+        rownames(altExp(singlets)),
+        function(g) {
+            # Subset to NTCs or cells with guide g
+            keep <- with(
+                colData(singlets),
+                target_gene == "NTC" | assignment == g
+            )
+            sce_sub <- singlets[, keep]
+            colData(sce_sub)$prtrb <- colData(sce_sub)$assignment == g
+            # Run differential expression
+            test_de(
+                glm_gp(
+                    counts(sce_sub),
+                    design = ~ sample + prtrb,
+                    col_data = colData(sce_sub),
+                    size_factors = exp(colMeans(log1p(counts(sce_sub)))),
+                    ridge_penalty = log(2) / lfc_prior_sd / sqrt(ncol(sce_sub)),
+                    overdispersion_shrinkage = FALSE
+                ),
+                contrast = "prtrbTRUE"
+            )
+        }
+    )
+    names(de_list) <- rownames(altExp(singlets))
 
-res_glmgp <- bplapply(
-    unique(colData(singlets)$assignment),
-    function(g) {
-        keep <- with(colData(singlets), target_gene == "NTC" | assignment == g)
-        sce_sub <- singlets[, keep]
-
-        colData(sce_sub)$prtrb <- colData(sce_sub)$assignment == g
-
-        fit <- glm_gp(
-            counts(sce_sub),
-            design = ~ sample + prtrb,
-            col_data = colData(sce_sub),
-            size_factors = exp(colMeans(log1p(counts(sce_sub)))),
-            overdispersion_shrinkage = FALSE
+    # convert differential expression results to SummarizedExperiment
+    de_summexp <- list()
+    for (a in c("lfc", "adj_pval")) {
+        de_summexp[[a]] <- sapply(
+            de_list,
+            function(x) setNames(x[, a], x[, "name"])
         )
-
-        res <- test_de(
-            fit,
-            contrast = "prtrbTRUE",
-            compute_lfc_se = TRUE,
-            max_lfc = Inf
-        )
-        res$grna <- g
-
-        res
-    },
-    BPPARAM = BPPARAM
-)
-
-res_glmgp <- do.call(rbind, res_glmgp)
-
-# recompute adjusted p-values over all tests
-res_glmgp$adj_pval <- p.adjust(res_glmgp$pval, method = "BH")
+    }
+    de_summexp <- SummarizedExperiment(
+        assays = de_summexp,
+        colData = rowData(altExp(singlets))
+    )
+} else {
+    de_summexp <- NULL
+}
 ```
 
-We then plot a heatmap of the shrunken log-fold changes 
-(computed with `r CRANpkg("ebnm")`)
-overlaid with the significant genes at FDR 5%.
+We then plot a heatmap of the log-fold changes; significant genes at FDR 5% are marked with a point.
 
 ```{r de-heatmap, fig.height=15, fig.width=15, fig.wide=TRUE}
-library(ebnm)
-library(ComplexHeatmap)
-
-# compute shrunken log fold changes
-
-res_glmgp$lfc_shrunk <- ebnm(
-    res_glmgp$lfc,
-    res_glmgp$lfc_se,
-    prior_family = "ash"
-)$posterior$mean
-
-# unmelt long dataframe of results into wide matrices
-res_glmgp %>%
-    select(name, grna, lfc_shrunk) %>%
-    pivot_wider(names_from = "grna", values_from = "lfc_shrunk") %>%
-    column_to_rownames("name") %>%
-    as.matrix() %>%
-    .[sort(rownames(.)), sort(colnames(.))] ->
-mat_lfc_shrunk
-
-res_glmgp %>%
-    select(name, grna, adj_pval) %>%
-    pivot_wider(names_from = "grna", values_from = "adj_pval") %>%
-    column_to_rownames("name") %>%
-    as.matrix() %>%
-    .[rownames(mat_lfc_shrunk), colnames(mat_lfc_shrunk)] ->
-mat_padj
-
-# annotation of significant p-values
-mat_star <- matrix("",
-    nrow = nrow(mat_padj), ncol = ncol(mat_padj),
-    dimnames = dimnames(mat_padj)
-)
-mat_star[mat_padj <= .05] <- "x"
-
-Heatmap(
-    t(mat_lfc_shrunk),
-    right_annotation = rowAnnotation(
-        df = rowData(altExp(tapseq_diffex))[
-            colnames(mat_lfc_shrunk),
-            "target_element_type",
-            drop = FALSE
-        ],
-        col = list(target_element_type = setNames(
-            palette()[1:3],
-            c("NTC", "enhancer", "promoter")
-        ))
-    ),
-    layer_fun = function(j, i, x, y, w, h, col) {
-        grid.text(
-            t(mat_star)[cbind(i, j)], x, y,
-            gp = gpar(fontsize = 12, fontface = "bold")
-        )
-    },
-    cluster_rows = FALSE, cluster_columns = FALSE,
-    heatmap_legend_param = list(title = "shrunkLogFC")
-)
+if (!is.null(de_summexp) && require(ComplexHeatmap)) {
+    Heatmap(
+        t(assay(de_summexp, "lfc")),
+        right_annotation = rowAnnotation(
+            df = colData(de_summexp)[, "target_element_type", drop = FALSE],
+            col = list(target_element_type = setNames(
+                palette()[1:3],
+                c("NTC", "enhancer", "promoter")
+            ))
+        ),
+        layer_fun = function(j, i, x, y, w, h, col) {
+            signif <- t(assay(de_summexp, "adj_pval"))[cbind(i, j)] <= .05
+            grid.points(
+                x[signif], y[signif],
+                pch = 21, size = unit(3, "mm"),
+                gp = gpar(col = "white", fill = "black", lwd = 2)
+            )
+        },
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        heatmap_legend_param = list(title = "logFC")
+    )
+}
 ```
 
 Overall the results look reasonable, with similar differential
 expression results between the guides for the same target, and in
-particular with the target gene usually being knocked down (e.g. CPQ
-guides have negative logFC for CPQ gene expression).  Some guides
-should be investigated as outliers -- for example, the fourth PHF20L1
-guide has different DEGs from the other PHF20L1 guides and in
-particular fails to knockdown the PHF20L1 gene.
+particular with the target gene usually being knocked down (e.g. ZFPM2
+guides have negative logFC for ZFPM2 gene expression).  Some guides
+should be investigated as outliers -- for example, the fourth UBR5
+guide shares few DEGs with the other UBR5 guides and in particular
+fails to knockdown the UBR5 gene.
 
 The number of DEGs among the NTCs can also give a rough idea of the
 empirical false positive rate or miscalibration of the results. Overall,
 most NTC guides have no DEGs, with some exceptions (such as NTC-22)
 which may be worth investigating as outliers.
 
-Beyond the scope of this vignette, a more detailed investigation could
-potentially improve the calibration or power of the analysis, such as
-by QC filtering of cells, by controlling for confounders (such as cell
-state), or by improving estimates of the cell size factors or gene
-overdispersions.
+Beyond the scope of this vignette, a more detailed analysis could
+improve the quality of the DE results, such as by QC filtering of
+cells, by controlling for confounders (such as cell state), by using
+more sophisticated shrinkage estimators of the log-fold-changes, or by
+improving estimates of the cell size factors or gene overdispersions.
 
 # References {.unnumbered}
 

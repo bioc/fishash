@@ -1,6 +1,6 @@
 Package: fishash
 Title: Cell Hashing with One-Sided Fisher Test
-Version: 0.99.1
+Version: 0.99.2
 Authors@R:
     person("Jack", "Kamm", , "jackkamm@gmail.com", role = c("aut", "cre"))
 Description: Assigns guide RNAs or other genetic perturbations to cells in
@@ -35,15 +35,10 @@ Suggests:
     BiocParallel,
     BiocStyle,
     ComplexHeatmap,
-    ebnm,
     ggExtra,
     glmGamPoi,
-    grid,
     knitr,
-    magrittr,
     rmarkdown,
-    tidyr,
-    tibble,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
