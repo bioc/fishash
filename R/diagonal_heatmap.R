@@ -9,6 +9,8 @@
 #'     (guides) are rows
 #' @param subsample_cells If smaller than `ncol(counts)`, subsamples
 #'     the columns
+#' @param max_guides If non-NULL and smaller than `nrow(counts)`,
+#'     subsets to the top guides by total UMI count.
 #' @param rownames_size Scales the font size of the row (feature) names
 #' @param plot If TRUE return a plot from ggplot2; if FALSE return the
 #'     dataframe used to produce the plot.
@@ -30,11 +32,17 @@
 diagonal_heatmap <- function(
     counts,
     subsample_cells = 1000,
+    max_guides = NULL,
     rownames_size = 8,
     plot = TRUE
 ) {
     if (isTRUE(subsample_cells < ncol(counts))) {
         counts <- counts[, sample(seq_len(ncol(counts)), subsample_cells)]
+    }
+
+    if (!is.null(max_guides) && nrow(counts) > max_guides) {
+        top_guides <- order(rowSums(counts), decreasing = TRUE)[seq_len(max_guides)]
+        counts <- counts[sort(top_guides), ]
     }
 
     counts <- sort_columns_by_top_row(counts)

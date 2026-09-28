@@ -7,6 +7,7 @@
 diagonal_heatmap(
   counts,
   subsample_cells = 1000,
+  max_guides = NULL,
   rownames_size = 8,
   plot = TRUE
 )
@@ -17,6 +18,9 @@ diagonal_heatmap(
 
 \item{subsample_cells}{If smaller than \code{ncol(counts)}, subsamples
 the columns}
+
+\item{max_guides}{If non-NULL and smaller than \code{nrow(counts)},
+subsets to the top guides by total UMI count.}
 
 \item{rownames_size}{Scales the font size of the row (feature) names}
 
