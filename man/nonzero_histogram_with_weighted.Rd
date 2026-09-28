@@ -4,13 +4,17 @@
 \alias{nonzero_histogram_with_weighted}
 \title{Plot histogram and weighted histogram of UMI counts}
 \usage{
-nonzero_histogram_with_weighted(counts, bins = 50)
+nonzero_histogram_with_weighted(counts, bins = 50, assigned = NULL)
 }
 \arguments{
 \item{counts}{Matrix of counts, columns are cells and rows are
 features.}
 
 \item{bins}{Number of bins for histogram}
+
+\item{assigned}{Optional matrix of assigned entries, or
+SummarizedExperiment returned by \code{fishash()}. If non-NULL, the
+histogram is colored by guide assignment status.}
 }
 \value{
 A patchwork object.
